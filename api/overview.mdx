@@ -1,0 +1,243 @@
+---
+title: API Overview
+description: Overview of Upptime's APIs and data endpoints
+---
+
+Upptime generates static JSON APIs and data endpoints that you can use to access uptime and response time data for your monitored sites. All data is stored in your GitHub repository and is publicly accessible via GitHub's raw content CDN.
+
+## API Endpoints
+
+Upptime automatically generates JSON endpoints for each monitored site in the `api/` directory of your repository.
+
+### Endpoint Structure
+
+For each site defined in `.upptimerc.yml`, Upptime creates a dedicated directory:
+
+```
+api/
+├── google/
+│   ├── uptime.json
+│   ├── uptime-day.json
+│   ├── uptime-week.json
+│   ├── uptime-month.json
+│   ├── uptime-year.json
+│   ├── response-time.json
+│   ├── response-time-day.json
+│   ├── response-time-week.json
+│   ├── response-time-month.json
+│   └── response-time-year.json
+├── wikipedia/
+└── ...
+```
+
+## Uptime Data
+
+### All-time Uptime
+
+<ParamField path="/api/{site-slug}/uptime.json" type="GET">
+  Returns the all-time uptime percentage for a site
+</ParamField>
+
+<ResponseField name="schemaVersion" type="number">
+  Schema version number (always `1`)
+</ResponseField>
+
+<ResponseField name="label" type="string">
+  Badge label text (e.g., `"uptime"`)
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Uptime percentage (e.g., `"99.99%"`)
+</ResponseField>
+
+<ResponseField name="color" type="string">
+  Badge color based on uptime: `brightgreen` (&gt;95%), `yellow` (90-95%), `red` (&lt;90%)
+</ResponseField>
+
+**Example Response:**
+
+```json
+{
+  "schemaVersion": 1,
+  "label": "uptime",
+  "message": "99.99%",
+  "color": "brightgreen"
+}
+```
+
+### Time-based Uptime
+
+Similar endpoints are available for specific time periods:
+
+- `/api/{site-slug}/uptime-day.json` - Last 24 hours
+- `/api/{site-slug}/uptime-week.json` - Last 7 days
+- `/api/{site-slug}/uptime-month.json` - Last 30 days
+- `/api/{site-slug}/uptime-year.json` - Last 365 days
+
+**Example Response:**
+
+```json
+{
+  "schemaVersion": 1,
+  "label": "uptime 24h",
+  "message": "100%",
+  "color": "brightgreen"
+}
+```
+
+## Response Time Data
+
+### Average Response Time
+
+<ParamField path="/api/{site-slug}/response-time.json" type="GET">
+  Returns the average response time for a site
+</ParamField>
+
+<ResponseField name="schemaVersion" type="number">
+  Schema version number (always `1`)
+</ResponseField>
+
+<ResponseField name="label" type="string">
+  Badge label text (e.g., `"response time"`)
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Average response time with unit (e.g., `"127 ms"`)
+</ResponseField>
+
+<ResponseField name="color" type="string">
+  Badge color based on response time: `brightgreen` (&lt;1s), `yellow` (1-3s), `red` (&gt;3s)
+</ResponseField>
+
+**Example Response:**
+
+```json
+{
+  "schemaVersion": 1,
+  "label": "response time",
+  "message": "127 ms",
+  "color": "brightgreen"
+}
+```
+
+### Time-based Response Time
+
+Similar endpoints for specific time periods:
+
+- `/api/{site-slug}/response-time-day.json` - Last 24 hours average
+- `/api/{site-slug}/response-time-week.json` - Last 7 days average
+- `/api/{site-slug}/response-time-month.json` - Last 30 days average
+- `/api/{site-slug}/response-time-year.json` - Last 365 days average
+
+**Example Response:**
+
+```json
+{
+  "schemaVersion": 1,
+  "label": "response time 7d",
+  "message": "176 ms",
+  "color": "brightgreen"
+}
+```
+
+## Historical Data
+
+Upptime stores historical status data in YAML files in the `history/` directory.
+
+### History File Structure
+
+<ParamField path="/history/{site-slug}.yml" type="File">
+  YAML file containing the current status of a monitored site
+</ParamField>
+
+<ResponseField name="url" type="string">
+  The monitored URL
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current status: `up` or `down`
+</ResponseField>
+
+<ResponseField name="code" type="number">
+  HTTP status code from the last check
+</ResponseField>
+
+<ResponseField name="responseTime" type="number">
+  Response time in milliseconds from the last check
+</ResponseField>
+
+<ResponseField name="lastUpdated" type="string">
+  ISO 8601 timestamp of the last check
+</ResponseField>
+
+<ResponseField name="startTime" type="string">
+  ISO 8601 timestamp when monitoring started
+</ResponseField>
+
+<ResponseField name="generator" type="string">
+  Generator information (e.g., `"Upptime <https://github.com/upptime/upptime>"`)
+</ResponseField>
+
+**Example:**
+
+```yaml
+url: https://www.google.com
+status: up
+code: 200
+responseTime: 131
+lastUpdated: 2026-03-02T23:16:08.212Z
+startTime: 2020-08-10T07:54:39.000Z
+generator: Upptime <https://github.com/upptime/upptime>
+```
+
+## Accessing the API
+
+All API endpoints are accessible via GitHub's raw content CDN:
+
+```
+https://raw.githubusercontent.com/{owner}/{repo}/HEAD/api/{site-slug}/{endpoint}.json
+```
+
+**Example:**
+
+```bash
+curl https://raw.githubusercontent.com/upptime/upptime/HEAD/api/google/uptime.json
+```
+
+## Using with Shields.io
+
+The JSON endpoints follow the [Shields.io endpoint schema](https://shields.io/endpoint), allowing you to create dynamic badges:
+
+```markdown
+![Uptime](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fupptime%2Fupptime%2FHEAD%2Fapi%2Fgoogle%2Fuptime.json)
+```
+
+## Generated Graphs
+
+Upptime also generates response time graphs as PNG images in the `graphs/` directory:
+
+- `graphs/{site-slug}/response-time-day.png`
+- `graphs/{site-slug}/response-time-week.png`
+- `graphs/{site-slug}/response-time-month.png`
+- `graphs/{site-slug}/response-time-year.png`
+- `graphs/{site-slug}.png` - All-time graph
+
+These are 600x400px PNG images showing response time trends over time.
+
+## Rate Limits
+
+Since the data is hosted on GitHub, access is subject to GitHub's CDN rate limits. For public repositories, these limits are generally very generous. Consider:
+
+- Caching responses on your end
+- Using the GitHub API instead for authenticated access (higher rate limits)
+- Hosting critical integrations on your own infrastructure
+
+## Next Steps
+
+<Card title="Configuration Reference" icon="gear" href="/api/configuration-reference">
+  Learn about all available configuration options in `.upptimerc.yml`
+</Card>
+
+<Card title="GitHub Actions API" icon="github" href="/api/github-actions">
+  Explore workflow commands and manual triggers
+</Card>

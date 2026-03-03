@@ -1,0 +1,143 @@
+---
+title: "Setting Up Custom Domains"
+description: "Configure a custom domain for your Upptime status page"
+---
+
+## Overview
+
+By default, Upptime hosts your status page on GitHub Pages at `username.github.io/repo-name`. You can configure a custom domain to make your status page accessible at your own domain, such as `status.yourcompany.com`.
+
+## Prerequisites
+
+Before you begin, ensure you have:
+
+- An Upptime repository set up and running
+- A domain name that you own
+- Access to your domain's DNS settings
+
+## Configuration Steps
+
+<Steps>
+  <Step title="Add CNAME to .upptimerc.yml">
+    Open your `.upptimerc.yml` file and add your custom domain under the `status-website` section:
+
+    ```yaml .upptimerc.yml
+    status-website:
+      cname: status.yourcompany.com
+      name: Your Company Status
+      logoUrl: https://yourcompany.com/logo.svg
+    ```
+
+    <Note>
+      If you're using a subdomain (like `status.yourcompany.com`), use the `cname` field. For apex domains (like `yourcompany.com`), you'll need to configure A records instead.
+    </Note>
+  </Step>
+
+  <Step title="Configure DNS settings">
+    Add a CNAME record in your DNS provider pointing to your GitHub Pages domain:
+
+    | Type  | Name   | Value                          |
+    |-------|--------|--------------------------------|
+    | CNAME | status | username.github.io             |
+
+    **For apex domains**, add these A records instead:
+
+    ```
+    185.199.108.153
+    185.199.109.153
+    185.199.110.153
+    185.199.111.153
+    ```
+
+    <Warning>
+      DNS changes can take up to 24-48 hours to propagate globally, though they often update within a few hours.
+    </Warning>
+  </Step>
+
+  <Step title="Commit and push changes">
+    Commit your `.upptimerc.yml` changes to trigger the setup workflow:
+
+    ```bash
+    git add .upptimerc.yml
+    git commit -m "Configure custom domain"
+    git push
+    ```
+
+    The GitHub Actions workflow will automatically create a `CNAME` file in your `gh-pages` branch.
+  </Step>
+
+  <Step title="Enable HTTPS in GitHub">
+    1. Navigate to your repository **Settings** > **Pages**
+    2. Verify your custom domain appears under "Custom domain"
+    3. Enable **Enforce HTTPS** (may take a few minutes after DNS propagation)
+
+    <Note>
+      GitHub automatically provisions an SSL certificate for your custom domain using Let's Encrypt.
+    </Note>
+  </Step>
+
+  <Step title="Verify the configuration">
+    Visit your custom domain to confirm the status page is loading correctly:
+
+    ```
+    https://status.yourcompany.com
+    ```
+
+    You should see your Upptime status page with the custom branding you configured.
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+### DNS not resolving
+
+If your domain isn't resolving after 24 hours:
+
+1. Verify your DNS records are correct using a tool like `dig`:
+   ```bash
+   dig status.yourcompany.com
+   ```
+2. Check for typos in your `.upptimerc.yml` `cname` field
+3. Ensure your DNS provider supports CNAME flattening if using an apex domain
+
+### HTTPS not available
+
+- Wait at least 10-15 minutes after DNS propagation
+- Ensure your DNS is properly configured and resolving
+- Try disabling and re-enabling HTTPS in GitHub Pages settings
+
+### 404 errors
+
+If you see a 404 error:
+
+1. Check that the GitHub Actions workflow completed successfully
+2. Verify the `CNAME` file exists in your `gh-pages` branch
+3. Ensure GitHub Pages is enabled and set to deploy from the `gh-pages` branch
+
+## Using a subdirectory
+
+If you need to host your status page in a subdirectory without a custom domain, use `baseUrl` instead:
+
+```yaml .upptimerc.yml
+status-website:
+  # cname: status.yourcompany.com  # Comment out or remove
+  baseUrl: /upptime
+  name: Your Company Status
+```
+
+Your status page will be available at `username.github.io/upptime`.
+
+<Warning>
+  You cannot use both `cname` and `baseUrl` simultaneously. Choose one based on your deployment strategy.
+</Warning>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Customize Your Status Page" icon="palette" href="/configuration/customization">
+    Learn how to customize the appearance and branding of your status page.
+  </Card>
+  <Card title="Configure Notifications" icon="bell" href="/features/notifications">
+    Set up notifications to alert your team when incidents occur.
+  </Card>
+</CardGroup>

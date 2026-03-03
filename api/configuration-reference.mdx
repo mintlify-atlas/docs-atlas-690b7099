@@ -1,0 +1,493 @@
+---
+title: Configuration Reference
+description: Complete .upptimerc.yml schema reference
+---
+
+The `.upptimerc.yml` file is the central configuration file for Upptime. It defines which sites to monitor, how to present your status page, and various monitoring behaviors.
+
+## Basic Configuration
+
+### Repository Settings
+
+<ParamField path="owner" type="string" required>
+  Your GitHub username or organization name where this repository lives
+</ParamField>
+
+<ParamField path="repo" type="string" required>
+  The name of this repository
+</ParamField>
+
+**Example:**
+
+```yaml
+owner: upptime
+repo: upptime
+```
+
+## Sites Configuration
+
+<ParamField path="sites" type="array" required>
+  Array of sites to monitor. Each site is an object with the following properties.
+</ParamField>
+
+### Site Object
+
+<ParamField path="sites[].name" type="string" required>
+  Display name for the site (used in status page and issues)
+</ParamField>
+
+<ParamField path="sites[].url" type="string" required>
+  URL or hostname to monitor. Can be a full URL (with protocol) or just a hostname for TCP checks.
+</ParamField>
+
+<ParamField path="sites[].check" type="string" default="http">
+  Type of check to perform:
+  - `http` - HTTP/HTTPS request (default)
+  - `tcp-ping` - TCP port connectivity check
+  - `dns` - DNS resolution check
+</ParamField>
+
+<ParamField path="sites[].port" type="number">
+  Port number for TCP checks (only used with `check: "tcp-ping"`)
+</ParamField>
+
+<ParamField path="sites[].ipv6" type="boolean" default={false}>
+  Whether to use IPv6 for the check
+</ParamField>
+
+<ParamField path="sites[].method" type="string" default="GET">
+  HTTP method to use (GET, POST, PUT, etc.)
+</ParamField>
+
+<ParamField path="sites[].headers" type="array">
+  Custom HTTP headers to send with requests. Format: `["Header-Name: value"]`
+</ParamField>
+
+<ParamField path="sites[].body" type="string">
+  Request body for POST/PUT requests
+</ParamField>
+
+<ParamField path="sites[].expectedStatusCodes" type="array" default="[200, 201, 202, 203, 204, 205, 206, 207, 208, 226, 300, 301, 302, 303, 304, 305, 306, 307, 308]">
+  Array of acceptable HTTP status codes. Site is considered up if response code matches any in this array.
+</ParamField>
+
+<ParamField path="sites[].assignees" type="array">
+  GitHub usernames to assign to issues when this site goes down
+</ParamField>
+
+<ParamField path="sites[].slug" type="string">
+  Custom slug for the site (auto-generated from name if not provided). Used in URLs and file names.
+</ParamField>
+
+<ParamField path="sites[].maxResponseTime" type="number" default={30000}>
+  Maximum time (in ms) to wait for a response before timing out
+</ParamField>
+
+<ParamField path="sites[].maxRedirects" type="number" default={5}>
+  Maximum number of redirects to follow
+</ParamField>
+
+**Example:**
+
+```yaml
+sites:
+  - name: Google
+    url: https://www.google.com
+  
+  - name: Wikipedia
+    url: https://en.wikipedia.org
+    expectedStatusCodes:
+      - 200
+      - 301
+  
+  - name: Hacker News
+    url: https://news.ycombinator.com
+    method: GET
+    headers:
+      - "User-Agent: Upptime"
+  
+  - name: Test Broken Site
+    url: https://thissitedoesnotexist.koj.co
+  
+  - name: IPv6 test
+    url: forwardemail.net
+    port: 80
+    check: "tcp-ping"
+    ipv6: true
+```
+
+## Status Website Configuration
+
+<ParamField path="status-website" type="object">
+  Configuration for the status website hosted on GitHub Pages
+</ParamField>
+
+### Basic Website Settings
+
+<ParamField path="status-website.cname" type="string">
+  Custom domain for your status page (e.g., `status.example.com`). Omit if using GitHub Pages default domain.
+</ParamField>
+
+<ParamField path="status-website.baseUrl" type="string">
+  Base URL path for the site. Use `/{repo-name}` if not using a custom domain. Omit if using a custom domain.
+</ParamField>
+
+<ParamField path="status-website.logoUrl" type="string">
+  URL to your logo image (PNG, SVG, etc.)
+</ParamField>
+
+<ParamField path="status-website.name" type="string">
+  Name of your status page
+</ParamField>
+
+<ParamField path="status-website.introTitle" type="string">
+  Title text on the homepage (supports Markdown)
+</ParamField>
+
+<ParamField path="status-website.introMessage" type="string">
+  Introduction message on the homepage (supports Markdown)
+</ParamField>
+
+<ParamField path="status-website.navbar" type="array">
+  Navigation links in the header. Each item has `title` and `href` properties.
+</ParamField>
+
+<ParamField path="status-website.theme" type="string" default="light">
+  Color theme: `light`, `dark`, or `auto`
+</ParamField>
+
+<ParamField path="status-website.favicon" type="string">
+  URL to your favicon
+</ParamField>
+
+<ParamField path="status-website.faviconSvg" type="string">
+  URL to your SVG favicon
+</ParamField>
+
+<ParamField path="status-website.metaDescription" type="string">
+  Meta description for SEO
+</ParamField>
+
+**Example:**
+
+```yaml
+status-website:
+  cname: demo.upptime.js.org
+  logoUrl: https://raw.githubusercontent.com/upptime/upptime.js.org/master/static/img/icon.svg
+  name: Upptime
+  introTitle: "**Upptime** is the open-source uptime monitor and status page"
+  introMessage: This is a sample status page which uses **real-time** data
+  navbar:
+    - title: Status
+      href: /
+    - title: GitHub
+      href: https://github.com/$OWNER/$REPO
+  theme: light
+```
+
+### Internationalization (i18n)
+
+<ParamField path="status-website.i18n" type="object">
+  Internationalization settings for the status page
+</ParamField>
+
+<ParamField path="status-website.i18n.activeIncidents" type="string">
+  Custom text for "Active Incidents"
+</ParamField>
+
+<ParamField path="status-website.i18n.allSystemsOperational" type="string">
+  Custom text for "All Systems Operational"
+</ParamField>
+
+<ParamField path="status-website.i18n.incidentReport" type="string">
+  Custom text for "Incident Report"
+</ParamField>
+
+<ParamField path="status-website.i18n.activeIncidentSummary" type="string">
+  Custom text for active incident summary
+</ParamField>
+
+<ParamField path="status-website.i18n.previousIncidents" type="string">
+  Custom text for "Previous Incidents"
+</ParamField>
+
+**Example:**
+
+```yaml
+status-website:
+  i18n:
+    activeIncidents: Active Incidents
+    allSystemsOperational: All Systems Operational
+    incidentReport: Incident Report for $SITE
+```
+
+## Notification Configuration
+
+<ParamField path="notifications" type="array">
+  Array of notification integrations. Each notification type has different configuration options.
+</ParamField>
+
+### Slack Notifications
+
+<ParamField path="notifications[].type" type="string">
+  Set to `"slack"` for Slack notifications
+</ParamField>
+
+<ParamField path="notifications[].webhookUrl" type="string">
+  Slack webhook URL (use `$SECRET_NAME` to reference GitHub secrets)
+</ParamField>
+
+**Example:**
+
+```yaml
+notifications:
+  - type: slack
+    webhookUrl: $SLACK_WEBHOOK_URL
+```
+
+### Discord Notifications
+
+<ParamField path="notifications[].type" type="string">
+  Set to `"discord"` for Discord notifications
+</ParamField>
+
+<ParamField path="notifications[].webhookUrl" type="string">
+  Discord webhook URL
+</ParamField>
+
+**Example:**
+
+```yaml
+notifications:
+  - type: discord
+    webhookUrl: $DISCORD_WEBHOOK_URL
+```
+
+### Telegram Notifications
+
+<ParamField path="notifications[].type" type="string">
+  Set to `"telegram"` for Telegram notifications
+</ParamField>
+
+<ParamField path="notifications[].botToken" type="string">
+  Telegram bot token
+</ParamField>
+
+<ParamField path="notifications[].chatId" type="string">
+  Telegram chat ID
+</ParamField>
+
+**Example:**
+
+```yaml
+notifications:
+  - type: telegram
+    botToken: $TELEGRAM_BOT_TOKEN
+    chatId: $TELEGRAM_CHAT_ID
+```
+
+### Email Notifications
+
+<ParamField path="notifications[].type" type="string">
+  Set to `"email"` for email notifications
+</ParamField>
+
+<ParamField path="notifications[].to" type="string">
+  Email address to send notifications to
+</ParamField>
+
+<ParamField path="notifications[].smtpHost" type="string">
+  SMTP server hostname
+</ParamField>
+
+<ParamField path="notifications[].smtpPort" type="number">
+  SMTP server port
+</ParamField>
+
+<ParamField path="notifications[].smtpUsername" type="string">
+  SMTP username
+</ParamField>
+
+<ParamField path="notifications[].smtpPassword" type="string">
+  SMTP password
+</ParamField>
+
+**Example:**
+
+```yaml
+notifications:
+  - type: email
+    to: alerts@example.com
+    smtpHost: smtp.gmail.com
+    smtpPort: 587
+    smtpUsername: $SMTP_USERNAME
+    smtpPassword: $SMTP_PASSWORD
+```
+
+## Advanced Settings
+
+<ParamField path="assignees" type="array">
+  Default GitHub usernames to assign to all issues (can be overridden per-site)
+</ParamField>
+
+<ParamField path="skipDescriptionUpdate" type="boolean" default={false}>
+  Skip updating the repository description with uptime percentage
+</ParamField>
+
+<ParamField path="skipTopicsUpdate" type="boolean" default={false}>
+  Skip updating repository topics
+</ParamField>
+
+<ParamField path="skipHomepageUpdate" type="boolean" default={false}>
+  Skip updating the repository homepage URL
+</ParamField>
+
+<ParamField path="skipDeleteCommand" type="boolean" default={false}>
+  Skip the automatic cleanup/delete commands
+</ParamField>
+
+<ParamField path="commitMessages" type="object">
+  Custom commit message templates
+</ParamField>
+
+<ParamField path="commitMessages.commitAuthorName" type="string" default="Upptime Bot">
+  Git commit author name
+</ParamField>
+
+<ParamField path="commitMessages.commitAuthorEmail" type="string" default="73812536+upptime-bot@users.noreply.github.com">
+  Git commit author email
+</ParamField>
+
+<ParamField path="workflowSchedule" type="object">
+  Custom cron schedules for workflows
+</ParamField>
+
+<ParamField path="workflowSchedule.uptime" type="string" default="*/5 * * * *">
+  Cron schedule for uptime checks (default: every 5 minutes)
+</ParamField>
+
+<ParamField path="workflowSchedule.responseTime" type="string" default="0 23 * * *">
+  Cron schedule for response time updates (default: daily at 11 PM UTC)
+</ParamField>
+
+<ParamField path="workflowSchedule.graphs" type="string" default="0 0 * * *">
+  Cron schedule for graph generation (default: daily at midnight UTC)
+</ParamField>
+
+<ParamField path="workflowSchedule.site" type="string" default="0 1 * * *">
+  Cron schedule for site generation (default: daily at 1 AM UTC)
+</ParamField>
+
+**Example:**
+
+```yaml
+assignees:
+  - AnandChowdhary
+  
+skipDescriptionUpdate: false
+
+commitMessages:
+  commitAuthorName: "Custom Bot Name"
+  commitAuthorEmail: "bot@example.com"
+
+workflowSchedule:
+  uptime: "*/10 * * * *"  # Every 10 minutes
+  responseTime: "0 */6 * * *"  # Every 6 hours
+  graphs: "0 2 * * *"  # Daily at 2 AM
+```
+
+## User Agent
+
+<ParamField path="user-agent" type="string">
+  Custom User-Agent header for all requests. Use `$secret_name` to reference secrets.
+</ParamField>
+
+**Example:**
+
+```yaml
+user-agent: "UptimeBot/1.0 (+https://upptime.js.org)"
+```
+
+## PAT (Personal Access Token)
+
+<ParamField path="PAT" type="string">
+  Reference to GitHub Personal Access Token stored in secrets. Required for private repositories.
+</ParamField>
+
+**Example:**
+
+```yaml
+PAT: ${{ secrets.GH_PAT }}
+```
+
+## Complete Example
+
+```yaml
+# Repository settings
+owner: upptime
+repo: upptime
+
+# Sites to monitor
+sites:
+  - name: Google
+    url: https://www.google.com
+  
+  - name: Wikipedia
+    url: https://en.wikipedia.org
+  
+  - name: Hacker News
+    url: https://news.ycombinator.com
+  
+  - name: Test Broken Site
+    url: https://thissitedoesnotexist.koj.co
+  
+  - name: IPv6 test
+    url: forwardemail.net
+    port: 80
+    check: "tcp-ping"
+    ipv6: true
+
+# Status website
+status-website:
+  cname: demo.upptime.js.org
+  logoUrl: https://raw.githubusercontent.com/upptime/upptime.js.org/master/static/img/icon.svg
+  name: Upptime
+  introTitle: "**Upptime** is the open-source uptime monitor and status page, powered entirely by GitHub."
+  introMessage: This is a sample status page which uses **real-time** data from our [GitHub repository](https://github.com/upptime/upptime).
+  navbar:
+    - title: Status
+      href: /
+    - title: GitHub
+      href: https://github.com/$OWNER/$REPO
+
+# Notifications (optional)
+# notifications:
+#   - type: slack
+#     webhookUrl: $SLACK_WEBHOOK_URL
+
+# Assignees (optional)
+# assignees:
+#   - AnandChowdhary
+```
+
+## Validation
+
+When you push changes to `.upptimerc.yml`, the Setup workflow automatically validates your configuration and regenerates all workflow files. If there are errors, check the workflow logs in the Actions tab.
+
+## Environment Variables
+
+You can use special variables in your configuration:
+
+- `$OWNER` - Replaced with the repository owner
+- `$REPO` - Replaced with the repository name
+- `$SECRET_NAME` - Replaced with the value from GitHub Secrets
+
+## Next Steps
+
+<Card title="API Overview" icon="code" href="/api/overview">
+  Learn about accessing uptime and response time data
+</Card>
+
+<Card title="GitHub Actions API" icon="github" href="/api/github-actions">
+  Explore workflow commands and triggers
+</Card>

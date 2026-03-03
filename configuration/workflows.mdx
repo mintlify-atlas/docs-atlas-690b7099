@@ -1,0 +1,337 @@
+---
+title: 'GitHub Actions Workflows'
+description: 'Understanding and customizing Upptime GitHub Actions workflows'
+icon: 'code-branch'
+---
+
+Upptime uses GitHub Actions workflows to automate uptime monitoring, status page generation, and reporting. All workflows are automatically generated based on your `.upptimerc.yml` configuration.
+
+## Overview
+
+Upptime creates several GitHub Actions workflows in `.github/workflows/` directory:
+
+- **uptime.yml** - Checks site status every 5 minutes
+- **response-time.yml** - Records response times daily
+- **graphs.yml** - Generates response time graphs daily
+- **site.yml** - Builds and deploys the status page
+- **summary.yml** - Updates the README with status summary
+- **setup.yml** - Runs when you update `.upptimerc.yml`
+- **updates.yml** - Keeps Upptime updated to the latest version
+
+<Warning>
+  **Do not edit workflow files directly!** They are automatically generated from your `.upptimerc.yml` configuration. Any manual changes will be overwritten when the template updates.
+</Warning>
+
+## Uptime CI Workflow
+
+The primary workflow that monitors your sites.
+
+```yaml
+name: Uptime CI
+on:
+  schedule:
+    - cron: "*/5 * * * *"  # Every 5 minutes
+  repository_dispatch:
+    types: [uptime]
+  workflow_dispatch:
+```
+
+### Schedule
+
+<ParamField path="schedule" type="string" default="*/5 * * * *">
+  By default, sites are checked every 5 minutes. This is the fastest interval GitHub Actions supports.
+
+  <Note>The actual run time may be delayed by a few minutes during high-traffic periods on GitHub.</Note>
+</ParamField>
+
+### What it does
+
+1. Checks out your repository
+2. Pings each site in your `sites` configuration
+3. Records response time and status
+4. Opens/closes GitHub Issues for incidents
+5. Commits status changes to git history
+
+### Triggering manually
+
+You can trigger the uptime check manually:
+
+- Click **Actions** in your repository
+- Select **Uptime CI** workflow
+- Click **Run workflow**
+
+## Response Time CI Workflow
+
+Records response times for historical graphs.
+
+```yaml
+name: Response Time CI
+on:
+  schedule:
+    - cron: "0 23 * * *"  # Once per day at 11 PM UTC
+```
+
+### What it does
+
+1. Measures response time for each site
+2. Commits data to the `history/` directory
+3. Updates response time statistics in `api/` directory
+
+## Graphs CI Workflow
+
+Generates response time graphs from historical data.
+
+```yaml
+name: Graphs CI
+on:
+  schedule:
+    - cron: "0 0 * * *"  # Once per day at midnight UTC
+```
+
+### What it does
+
+1. Reads historical response time data
+2. Generates PNG graphs for each site
+3. Saves graphs to `graphs/` directory
+4. Commits graphs to repository
+
+## Static Site CI Workflow
+
+Builds and deploys your status page.
+
+```yaml
+name: Static Site CI
+on:
+  schedule:
+    - cron: "0 1 * * *"  # Once per day at 1 AM UTC
+  repository_dispatch:
+    types: [static_site]
+  workflow_dispatch:
+```
+
+### What it does
+
+1. Generates the status page using Svelte
+2. Exports static HTML/CSS/JS
+3. Deploys to GitHub Pages
+
+### Custom Domain Setup
+
+If you're using a custom domain:
+
+1. Add your domain to `status-website.cname` in `.upptimerc.yml`
+2. Create a CNAME record pointing to `your-username.github.io`
+3. Wait for DNS propagation (can take up to 24 hours)
+
+## Summary CI Workflow
+
+Updates your repository README with current status.
+
+```yaml
+name: Summary CI
+on:
+  schedule:
+    - cron: "0 0 * * *"  # Once per day at midnight UTC
+```
+
+### What it does
+
+1. Reads current status of all sites
+2. Generates a status table
+3. Updates the README.md file
+4. Commits the changes
+
+## Setup CI Workflow
+
+Runs when you modify `.upptimerc.yml`.
+
+```yaml
+name: Setup CI
+on:
+  push:
+    paths:
+      - ".upptimerc.yml"
+  workflow_dispatch:
+```
+
+### What it does
+
+1. Regenerates all workflows based on new configuration
+2. Updates the status page
+3. Regenerates graphs
+4. Updates README
+
+### When to trigger
+
+This workflow automatically runs when you:
+- Update `.upptimerc.yml`
+- Add or remove sites
+- Change status page configuration
+
+## Updates CI Workflow
+
+Keeps Upptime updated to the latest version.
+
+```yaml
+name: Updates CI
+on:
+  schedule:
+    - cron: "0 3 * * *"  # Once per day at 3 AM UTC
+```
+
+### What it does
+
+1. Checks for new Upptime versions
+2. Updates workflow files
+3. Creates a pull request with changes
+
+<Note>
+  You can disable automatic updates by deleting the `updates.yml` workflow file after the first setup.
+</Note>
+
+## GitHub Personal Access Token
+
+Upptime workflows require a GitHub Personal Access Token (PAT) to perform actions like creating issues and deploying to GitHub Pages.
+
+### Creating a PAT
+
+1. Go to **Settings** > **Developer settings** > **Personal access tokens** > **Tokens (classic)**
+2. Click **Generate new token (classic)**
+3. Name it "Upptime"
+4. Select scopes:
+   - `repo` (full control)
+   - `workflow` (if you want to update workflows)
+5. Click **Generate token**
+6. Copy the token (you won't see it again!)
+
+### Adding to Repository
+
+1. Go to your repository **Settings** > **Secrets and variables** > **Actions**
+2. Click **New repository secret**
+3. Name: `GH_PAT`
+4. Value: Paste your token
+5. Click **Add secret**
+
+<Warning>
+  Never commit your PAT directly to your repository. Always use GitHub Secrets.
+</Warning>
+
+## Workflow Environment Variables
+
+Workflows use these environment variables:
+
+<ParamField path="GH_PAT" type="string" required>
+  GitHub Personal Access Token for authentication.
+
+  ```yaml
+  env:
+    GH_PAT: ${{ secrets.GH_PAT || github.token }}
+  ```
+</ParamField>
+
+<ParamField path="SECRETS_CONTEXT" type="string">
+  Contains all repository secrets for use in headers and authentication.
+
+  ```yaml
+  env:
+    SECRETS_CONTEXT: ${{ toJson(secrets) }}
+  ```
+</ParamField>
+
+## Customizing Workflow Schedules
+
+While you can't directly edit workflow files, you can customize schedules through your `.upptimerc.yml`:
+
+<Note>
+  Upptime automatically generates workflows based on your configuration. To change schedules, you'll need to modify the template or fork Upptime.
+</Note>
+
+### Understanding Cron Syntax
+
+Workflow schedules use cron syntax:
+
+```
+┌───────────── minute (0 - 59)
+│ ┌───────────── hour (0 - 23)
+│ │ ┌───────────── day of month (1 - 31)
+│ │ │ ┌───────────── month (1 - 12)
+│ │ │ │ ┌───────────── day of week (0 - 6) (Sunday to Saturday)
+│ │ │ │ │
+* * * * *
+```
+
+Examples:
+- `*/5 * * * *` - Every 5 minutes
+- `0 * * * *` - Every hour
+- `0 0 * * *` - Every day at midnight
+- `0 0 * * 0` - Every Sunday at midnight
+
+## Troubleshooting Workflows
+
+<AccordionGroup>
+  <Accordion title="Workflow not running">
+    **Check:**
+    - GitHub Actions is enabled in repository settings
+    - You have a valid `GH_PAT` secret
+    - The workflow file exists in `.github/workflows/`
+    - Your repository isn't archived or disabled
+
+    **Fix:**
+    1. Go to **Settings** > **Actions** > **General**
+    2. Ensure "Allow all actions" is selected
+    3. Verify your `GH_PAT` is valid and has correct permissions
+  </Accordion>
+
+  <Accordion title="Workflow fails with authentication error">
+    **Error:** `Resource not accessible by integration`
+
+    **Fix:**
+    1. Check that your `GH_PAT` secret is set correctly
+    2. Verify the token has `repo` and `workflow` scopes
+    3. Regenerate the token if it's expired
+  </Accordion>
+
+  <Accordion title="Status page not updating">
+    **Check:**
+    - Site CI workflow completed successfully
+    - GitHub Pages is enabled
+    - Correct branch is selected for GitHub Pages (usually `gh-pages`)
+
+    **Fix:**
+    1. Go to **Settings** > **Pages**
+    2. Set source to `gh-pages` branch
+    3. Wait a few minutes for deployment
+  </Accordion>
+
+  <Accordion title="Changes not reflected after updating .upptimerc.yml">
+    **Fix:**
+    1. Ensure Setup CI workflow ran successfully
+    2. Check **Actions** tab for any errors
+    3. Manually trigger Setup CI if needed
+    4. Verify your YAML syntax is correct
+  </Accordion>
+</AccordionGroup>
+
+## Workflow Limits
+
+GitHub Actions has usage limits:
+
+- **Public repositories**: Unlimited minutes
+- **Private repositories**: 2,000 minutes/month (free tier)
+- **Concurrent jobs**: 20 for free accounts, 60 for Pro
+
+<Tip>
+  Upptime is designed to work efficiently within GitHub's free tier limits. The default 5-minute interval uses approximately 8,640 minutes per month for the uptime checks alone.
+</Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration Reference" icon="file-code" href="/configuration/upptimerc">
+    Learn more about .upptimerc.yml options
+  </Card>
+
+  <Card title="Customize Status Page" icon="palette" href="/configuration/customization">
+    Customize your status page appearance
+  </Card>
+</CardGroup>

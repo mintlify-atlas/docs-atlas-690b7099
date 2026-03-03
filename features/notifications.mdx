@@ -1,0 +1,515 @@
+---
+title: Notifications
+description: Get instant alerts when your sites go down via Slack, Discord, Telegram, and more
+---
+
+Upptime supports multiple notification channels to alert you when your monitored sites experience downtime. Configure notifications to ensure your team is immediately informed of any incidents.
+
+## Available Notification Channels
+
+Upptime integrates with popular communication platforms through GitHub Actions:
+
+<CardGroup cols={2}>
+  <Card title="Slack" icon="slack">
+    Post incident updates to Slack channels
+  </Card>
+  
+  <Card title="Discord" icon="discord">
+    Send alerts to Discord servers and channels
+  </Card>
+  
+  <Card title="Telegram" icon="telegram">
+    Receive messages in Telegram groups or channels
+  </Card>
+  
+  <Card title="Email" icon="envelope">
+    Send email notifications to team members
+  </Card>
+  
+  <Card title="Microsoft Teams" icon="microsoft">
+    Post to Teams channels
+  </Card>
+  
+  <Card title="Custom Webhooks" icon="webhook">
+    Integrate with any service that accepts webhooks
+  </Card>
+</CardGroup>
+
+## Configuration
+
+Notifications are configured in your `.upptimerc.yml` file:
+
+```yaml .upptimerc.yml
+owner: upptime
+repo: upptime
+
+sites:
+  - name: Google
+    url: https://www.google.com
+  - name: Wikipedia  
+    url: https://en.wikipedia.org
+
+# Notification configuration
+notifications:
+  - type: slack
+    webhook-url: $SLACK_WEBHOOK_URL
+  - type: discord
+    webhook-url: $DISCORD_WEBHOOK_URL
+```
+
+<Warning>
+Always use GitHub Secrets to store webhook URLs and API tokens. Never commit sensitive credentials to your repository.
+</Warning>
+
+## Setting Up Notifications
+
+### Slack
+
+Integrate Upptime with Slack to receive incident notifications:
+
+<Accordion title="Step 1: Create Slack Webhook">
+1. Go to your Slack workspace's **Apps** page
+2. Search for "Incoming Webhooks" and add it
+3. Choose the channel for notifications
+4. Copy the webhook URL
+</Accordion>
+
+<Accordion title="Step 2: Add Secret to GitHub">
+1. Go to your repository **Settings**
+2. Navigate to **Secrets and variables > Actions**
+3. Click **New repository secret**
+4. Name: `SLACK_WEBHOOK_URL`
+5. Value: Paste your webhook URL
+6. Click **Add secret**
+</Accordion>
+
+<Accordion title="Step 3: Configure .upptimerc.yml">
+```yaml .upptimerc.yml
+notifications:
+  - type: slack
+    webhook-url: $SLACK_WEBHOOK_URL
+    channel: "#status-alerts"
+```
+</Accordion>
+
+<Accordion title="Step 4: Test Notification">
+Trigger a test by manually running the Uptime workflow:
+1. Go to **Actions** tab
+2. Select **Uptime CI**
+3. Click **Run workflow**
+</Accordion>
+
+### Discord
+
+Send notifications to Discord servers:
+
+<Tabs>
+  <Tab title="Setup">
+    1. Open your Discord server settings
+    2. Go to **Integrations > Webhooks**
+    3. Click **New Webhook**
+    4. Name it "Upptime" and select a channel
+    5. Copy the webhook URL
+    6. Add as `DISCORD_WEBHOOK_URL` secret in GitHub
+  </Tab>
+  
+  <Tab title="Configuration">
+    ```yaml .upptimerc.yml
+    notifications:
+      - type: discord
+        webhook-url: $DISCORD_WEBHOOK_URL
+        username: "Upptime Bot"
+        avatar-url: "https://upptime.js.org/img/icon.svg"
+    ```
+  </Tab>
+  
+  <Tab title="Customization">
+    Customize the appearance:
+    ```yaml
+    notifications:
+      - type: discord
+        webhook-url: $DISCORD_WEBHOOK_URL
+        username: "Status Monitor"
+        embed-color: "#dc3545"  # Red for incidents
+    ```
+  </Tab>
+</Tabs>
+
+### Telegram
+
+Receive alerts in Telegram:
+
+<Accordion title="Create Bot">
+1. Message [@BotFather](https://t.me/botfather) on Telegram
+2. Send `/newbot` and follow instructions
+3. Copy the bot token
+4. Add as `TELEGRAM_BOT_TOKEN` secret in GitHub
+</Accordion>
+
+<Accordion title="Get Chat ID">
+1. Add your bot to a group or channel
+2. Send a message to the bot
+3. Visit `https://api.telegram.org/bot<TOKEN>/getUpdates`
+4. Find the `chat.id` in the response
+5. Add as `TELEGRAM_CHAT_ID` secret in GitHub
+</Accordion>
+
+<Accordion title="Configure">
+```yaml .upptimerc.yml
+notifications:
+  - type: telegram
+    bot-token: $TELEGRAM_BOT_TOKEN
+    chat-id: $TELEGRAM_CHAT_ID
+```
+</Accordion>
+
+### Email
+
+Send email notifications using SMTP:
+
+```yaml .upptimerc.yml
+notifications:
+  - type: email
+    smtp-host: smtp.gmail.com
+    smtp-port: 587
+    smtp-username: $SMTP_USERNAME
+    smtp-password: $SMTP_PASSWORD
+    from: "status@example.com"
+    to:
+      - "team@example.com"
+      - "oncall@example.com"
+```
+
+<Note>
+For Gmail, you'll need to create an [App Password](https://support.google.com/accounts/answer/185833) instead of using your regular password.
+</Note>
+
+### Microsoft Teams
+
+Post to Microsoft Teams channels:
+
+<Accordion title="Create Webhook">
+1. Open Microsoft Teams
+2. Go to the channel for notifications
+3. Click **...** > **Connectors**
+4. Find **Incoming Webhook** and configure
+5. Copy the webhook URL
+6. Add as `TEAMS_WEBHOOK_URL` secret
+</Accordion>
+
+<Accordion title="Configure">
+```yaml .upptimerc.yml
+notifications:
+  - type: teams
+    webhook-url: $TEAMS_WEBHOOK_URL
+```
+</Accordion>
+
+### Custom Webhooks
+
+Integrate with any service that accepts webhooks:
+
+```yaml .upptimerc.yml
+notifications:
+  - type: webhook
+    url: https://your-service.com/webhook
+    method: POST
+    headers:
+      Authorization: "Bearer $API_TOKEN"
+      Content-Type: "application/json"
+    body: |
+      {
+        "site": "$SITE_NAME",
+        "status": "$SITE_STATUS",
+        "url": "$SITE_URL",
+        "timestamp": "$TIMESTAMP"
+      }
+```
+
+## Notification Events
+
+You can configure which events trigger notifications:
+
+<Accordion title="Downtime Detected">
+When a site goes down:
+```yaml
+notifications:
+  - type: slack
+    webhook-url: $SLACK_WEBHOOK_URL
+    on:
+      - down
+```
+</Accordion>
+
+<Accordion title="Site Recovered">
+When a site comes back up:
+```yaml
+notifications:
+  - type: slack
+    webhook-url: $SLACK_WEBHOOK_URL
+    on:
+      - up
+```
+</Accordion>
+
+<Accordion title="Degraded Performance">
+When response times are slow:
+```yaml
+notifications:
+  - type: slack
+    webhook-url: $SLACK_WEBHOOK_URL
+    on:
+      - degraded
+```
+</Accordion>
+
+<Accordion title="All Events">
+Notify on all status changes:
+```yaml
+notifications:
+  - type: slack
+    webhook-url: $SLACK_WEBHOOK_URL
+    on:
+      - down
+      - up
+      - degraded
+```
+</Accordion>
+
+## Per-Site Notifications
+
+Configure different notifications for different sites:
+
+```yaml .upptimerc.yml
+sites:
+  - name: Production API
+    url: https://api.example.com
+    notifications:
+      - type: slack
+        webhook-url: $SLACK_CRITICAL_WEBHOOK
+      - type: pagerduty
+        integration-key: $PAGERDUTY_KEY
+        
+  - name: Staging Site
+    url: https://staging.example.com
+    notifications:
+      - type: slack
+        webhook-url: $SLACK_DEV_WEBHOOK
+```
+
+## Notification Content
+
+Customize the content of notifications:
+
+<Tabs>
+  <Tab title="Message Template">
+    ```yaml .upptimerc.yml
+    notifications:
+      - type: slack
+        webhook-url: $SLACK_WEBHOOK_URL
+        message-template: |
+          🚨 Alert: $SITE_NAME is $STATUS
+          URL: $SITE_URL
+          Response: $RESPONSE_CODE
+          Time: $TIMESTAMP
+    ```
+  </Tab>
+  
+  <Tab title="Custom Fields">
+    Available variables:
+    - `$SITE_NAME` - Name of the site
+    - `$SITE_URL` - URL being monitored
+    - `$STATUS` - Current status (up/down)
+    - `$RESPONSE_CODE` - HTTP response code
+    - `$RESPONSE_TIME` - Response time in ms
+    - `$TIMESTAMP` - Current timestamp
+  </Tab>
+  
+  <Tab title="Rich Formatting">
+    For Slack/Discord, use rich formatting:
+    ```yaml
+    notifications:
+      - type: slack
+        webhook-url: $SLACK_WEBHOOK_URL
+        blocks:
+          - type: section
+            text:
+              type: mrkdwn
+              text: "*$SITE_NAME* is *$STATUS*"
+          - type: context
+            elements:
+              - type: mrkdwn
+                text: "Response: $RESPONSE_CODE | Time: $RESPONSE_TIMEms"
+    ```
+  </Tab>
+</Tabs>
+
+## Managing GitHub Secrets
+
+<Steps>
+  <Step title="Navigate to Settings">
+    Go to your repository and click **Settings**
+  </Step>
+  
+  <Step title="Access Secrets">
+    In the sidebar, go to **Secrets and variables > Actions**
+  </Step>
+  
+  <Step title="Add New Secret">
+    Click **New repository secret**
+  </Step>
+  
+  <Step title="Enter Details">
+    - **Name**: Use uppercase with underscores (e.g., `SLACK_WEBHOOK_URL`)
+    - **Value**: Paste your webhook URL or API token
+  </Step>
+  
+  <Step title="Reference in Config">
+    Use the secret in `.upptimerc.yml` with `$SECRET_NAME` syntax
+  </Step>
+</Steps>
+
+<Warning>
+Secrets are encrypted and cannot be viewed after creation. Make sure to save a backup copy securely.
+</Warning>
+
+## Testing Notifications
+
+Test your notification setup:
+
+1. **Manual workflow trigger**: Run the Uptime CI workflow manually
+2. **Test site**: Add a site you know is down (e.g., `https://thissitedoesnotexist.koj.co`)
+3. **Wait for check**: The next scheduled check will trigger a notification
+4. **Verify delivery**: Check your notification channel
+
+```yaml .upptimerc.yml
+sites:
+  # Test site that will always be down
+  - name: Test Broken Site
+    url: https://thissitedoesnotexist.koj.co
+```
+
+## Rate Limiting
+
+To avoid notification spam:
+
+<Accordion title="Minimum Interval">
+Set a minimum time between notifications:
+```yaml
+notifications:
+  - type: slack
+    webhook-url: $SLACK_WEBHOOK_URL
+    min-interval: 3600  # Only notify once per hour
+```
+</Accordion>
+
+<Accordion title="Notification Grouping">
+Group multiple site failures into one notification:
+```yaml
+notifications:
+  - type: slack
+    webhook-url: $SLACK_WEBHOOK_URL
+    group-notifications: true
+    group-interval: 300  # Group notifications within 5 minutes
+```
+</Accordion>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Not Receiving Notifications">
+    1. Verify the secret is correctly named in GitHub
+    2. Check the workflow logs in the Actions tab
+    3. Test the webhook URL manually with curl
+    4. Ensure the notification channel/bot is properly configured
+  </Accordion>
+  
+  <Accordion title="Webhook URL Invalid">
+    1. Double-check you copied the entire URL
+    2. Ensure no extra spaces or characters
+    3. Regenerate the webhook if needed
+    4. Verify the webhook hasn't been revoked
+  </Accordion>
+  
+  <Accordion title="Rate Limited">
+    1. Check your notification platform's rate limits
+    2. Reduce notification frequency
+    3. Use notification grouping
+    4. Consider multiple webhooks for high-volume alerts
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Separate Channels" icon="comments">
+    Create dedicated channels for status notifications to reduce noise
+  </Card>
+  
+  <Card title="Set Priorities" icon="ranking-star">
+    Use different notification methods for critical vs. non-critical sites
+  </Card>
+  
+  <Card title="Test Regularly" icon="vial">
+    Periodically test notifications to ensure they're working
+  </Card>
+  
+  <Card title="Document Setup" icon="book">
+    Keep documentation of webhook URLs and configuration
+  </Card>
+</CardGroup>
+
+## Advanced Integration
+
+### PagerDuty Integration
+
+For on-call escalation:
+
+```yaml .upptimerc.yml
+notifications:
+  - type: pagerduty
+    integration-key: $PAGERDUTY_INTEGRATION_KEY
+    severity: critical
+    component: "Web Services"
+```
+
+### Datadog Integration
+
+Send metrics to Datadog:
+
+```yaml .upptimerc.yml
+notifications:
+  - type: datadog
+    api-key: $DATADOG_API_KEY
+    site: datadoghq.com
+    tags:
+      - "service:upptime"
+      - "env:production"
+```
+
+### Custom GitHub Actions
+
+Create your own notification logic:
+
+```yaml .github/workflows/custom-notify.yml
+name: Custom Notifications
+on:
+  issues:
+    types: [opened, closed]
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send custom notification
+        run: |
+          # Your custom notification logic here
+          curl -X POST ${{ secrets.CUSTOM_WEBHOOK }} \
+            -H 'Content-Type: application/json' \
+            -d '{"incident": "${{ github.event.issue.title }}"}'
+```
+
+## Next Steps
+
+- Configure [Uptime Monitoring](/features/uptime-monitoring)
+- Learn about [Incident Management](/features/incidents)
+- Explore [Response Time Tracking](/features/response-time)

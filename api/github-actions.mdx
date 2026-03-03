@@ -1,0 +1,507 @@
+---
+title: GitHub Actions API
+description: GitHub Actions workflow commands and automation
+---
+
+Upptime uses GitHub Actions workflows to automate uptime monitoring, response time tracking, and status page generation. All workflows use the `upptime/uptime-monitor` action with different commands.
+
+## Workflow Commands
+
+The Upptime GitHub Action supports several commands that perform different monitoring and maintenance tasks.
+
+### update
+
+<ParamField path="command" type="string">
+  Set to `"update"` to check endpoint status and update history
+</ParamField>
+
+Checks the status of all configured endpoints, updates history files, and creates/closes GitHub issues for incidents.
+
+**Used in:** `uptime.yml`
+
+**Schedule:** Every 5 minutes (default)
+
+**What it does:**
+- Pings all configured sites
+- Records response times and status codes
+- Updates `history/{site-slug}.yml` files
+- Opens GitHub issues when sites go down
+- Closes issues when sites come back up
+- Sends notifications (if configured)
+
+**Example workflow step:**
+
+```yaml
+- name: Check endpoint status
+  uses: upptime/uptime-monitor@v1.41.0
+  with:
+    command: "update"
+  env:
+    GH_PAT: ${{ secrets.GH_PAT || github.token }}
+    SECRETS_CONTEXT: ${{ toJson(secrets) }}
+```
+
+**Manual trigger:**
+
+```bash
+gh workflow run "Uptime CI"
+```
+
+### response-time
+
+<ParamField path="command" type="string">
+  Set to `"response-time"` to update response time data and graphs
+</ParamField>
+
+Calculates and commits response time statistics for all monitored sites.
+
+**Used in:** `response-time.yml`, `setup.yml`
+
+**Schedule:** Daily at 11 PM UTC (default)
+
+**What it does:**
+- Calculates average response times (all-time, yearly, monthly, weekly, daily)
+- Updates JSON endpoints in `api/{site-slug}/`
+- Commits response time data to git history
+
+**Example workflow step:**
+
+```yaml
+- name: Update response time
+  uses: upptime/uptime-monitor@v1.41.0
+  with:
+    command: "response-time"
+  env:
+    GH_PAT: ${{ secrets.GH_PAT || github.token }}
+    SECRETS_CONTEXT: ${{ toJson(secrets) }}
+```
+
+**Manual trigger:**
+
+```bash
+gh workflow run "Response Time CI"
+```
+
+### graphs
+
+<ParamField path="command" type="string">
+  Set to `"graphs"` to generate response time graphs
+</ParamField>
+
+Generates PNG graphs showing response time trends over time.
+
+**Used in:** `graphs.yml`
+
+**Schedule:** Daily at midnight UTC (default)
+
+**What it does:**
+- Generates response time graphs for each site
+- Creates PNG images in `graphs/{site-slug}/`
+- Generates graphs for: day, week, month, year, and all-time
+- Graph dimensions: 600x400 pixels
+
+**Example workflow step:**
+
+```yaml
+- name: Generate graphs
+  uses: upptime/uptime-monitor@v1.41.0
+  with:
+    command: "graphs"
+  env:
+    GH_PAT: ${{ secrets.GH_PAT || github.token }}
+```
+
+**Manual trigger:**
+
+```bash
+gh workflow run "Graphs CI"
+```
+
+### site
+
+<ParamField path="command" type="string">
+  Set to `"site"` to build and deploy the status page
+</ParamField>
+
+Builds the static status page website using Svelte/Sapper and deploys it to GitHub Pages.
+
+**Used in:** `site.yml`, `setup.yml`
+
+**Schedule:** Daily at 1 AM UTC (default)
+
+**What it does:**
+- Builds the Svelte/Sapper status page
+- Generates static HTML/CSS/JS files
+- Outputs to `site/status-page/__sapper__/export/`
+- Deploys to GitHub Pages (via `peaceiris/actions-gh-pages`)
+
+**Example workflow step:**
+
+```yaml
+- name: Generate site
+  uses: upptime/uptime-monitor@v1.41.0
+  with:
+    command: "site"
+  env:
+    GH_PAT: ${{ secrets.GH_PAT || github.token }}
+
+- uses: peaceiris/actions-gh-pages@v4
+  name: GitHub Pages Deploy
+  with:
+    github_token: ${{ secrets.GH_PAT || github.token }}
+    publish_dir: "site/status-page/__sapper__/export/"
+    force_orphan: "false"
+    user_name: "Upptime Bot"
+    user_email: "73812536+upptime-bot@users.noreply.github.com"
+```
+
+**Manual trigger:**
+
+```bash
+gh workflow run "Static Site CI"
+```
+
+### readme
+
+<ParamField path="command" type="string">
+  Set to `"readme"` to update the README with status summary
+</ParamField>
+
+Updates the repository README with current status information and uptime percentages.
+
+**Used in:** `summary.yml`, `setup.yml`
+
+**Schedule:** Daily at midnight UTC (default)
+
+**What it does:**
+- Generates a summary table of all monitored sites
+- Updates the README.md file between comment markers
+- Includes current status, response times, and uptime percentages
+- Adds status badges and response time graphs
+
+**Example workflow step:**
+
+```yaml
+- name: Update summary in README
+  uses: upptime/uptime-monitor@v1.41.0
+  with:
+    command: "readme"
+  env:
+    GH_PAT: ${{ secrets.GH_PAT || github.token }}
+```
+
+**Manual trigger:**
+
+```bash
+gh workflow run "Summary CI"
+```
+
+### update-template
+
+<ParamField path="command" type="string">
+  Set to `"update-template"` to regenerate workflow files
+</ParamField>
+
+Regenerates all GitHub Actions workflow files based on your `.upptimerc.yml` configuration.
+
+**Used in:** `setup.yml`
+
+**Trigger:** When `.upptimerc.yml` is modified
+
+**What it does:**
+- Reads your `.upptimerc.yml` configuration
+- Generates workflow files in `.github/workflows/`
+- Updates cron schedules based on `workflowSchedule` settings
+- Creates workflow files: `uptime.yml`, `response-time.yml`, `graphs.yml`, `site.yml`, `summary.yml`
+
+**Example workflow step:**
+
+```yaml
+- name: Update template
+  uses: upptime/uptime-monitor@v1.41.0
+  with:
+    command: "update-template"
+  env:
+    GH_PAT: ${{ secrets.GH_PAT || github.token }}
+```
+
+**Manual trigger:**
+
+```bash
+gh workflow run "Setup CI"
+```
+
+## Workflows Overview
+
+### Uptime CI
+
+**File:** `.github/workflows/uptime.yml`
+
+**Purpose:** Continuously monitor site availability
+
+**Schedule:** Every 5 minutes (customizable via `workflowSchedule.uptime`)
+
+**Triggers:**
+- Scheduled cron job
+- Manual workflow dispatch
+- Repository dispatch event type `uptime`
+
+**Command:** `update`
+
+### Response Time CI
+
+**File:** `.github/workflows/response-time.yml`
+
+**Purpose:** Update response time statistics
+
+**Schedule:** Daily at 11 PM UTC (customizable via `workflowSchedule.responseTime`)
+
+**Triggers:**
+- Scheduled cron job
+- Manual workflow dispatch
+- Repository dispatch event type `response_time`
+
+**Command:** `response-time`
+
+### Graphs CI
+
+**File:** `.github/workflows/graphs.yml`
+
+**Purpose:** Generate response time visualization graphs
+
+**Schedule:** Daily at midnight UTC (customizable via `workflowSchedule.graphs`)
+
+**Triggers:**
+- Scheduled cron job
+- Manual workflow dispatch
+- Repository dispatch event type `graphs`
+
+**Command:** `graphs`
+
+### Static Site CI
+
+**File:** `.github/workflows/site.yml`
+
+**Purpose:** Build and deploy status page website
+
+**Schedule:** Daily at 1 AM UTC (customizable via `workflowSchedule.site`)
+
+**Triggers:**
+- Scheduled cron job
+- Manual workflow dispatch
+- Repository dispatch event type `static_site`
+
+**Command:** `site`
+
+**Skip condition:** Skips if commit message contains `[skip ci]`
+
+### Summary CI
+
+**File:** `.github/workflows/summary.yml`
+
+**Purpose:** Update README with status summary
+
+**Schedule:** Daily at midnight UTC
+
+**Triggers:**
+- Scheduled cron job
+- Manual workflow dispatch
+- Repository dispatch event type `summary`
+
+**Command:** `readme`
+
+### Setup CI
+
+**File:** `.github/workflows/setup.yml`
+
+**Purpose:** Initialize or reconfigure Upptime
+
+**Triggers:**
+- Push to `.upptimerc.yml`
+- Manual workflow dispatch
+- Repository dispatch event type `setup`
+
+**Commands:** `update-template`, `response-time`, `readme`, `site`
+
+**Special:** Also triggers the Graphs CI workflow
+
+## Environment Variables
+
+### GH_PAT
+
+<ParamField path="GH_PAT" type="string" required>
+  GitHub Personal Access Token for API access and git operations
+</ParamField>
+
+Required for:
+- Creating and managing issues
+- Committing changes to the repository
+- Deploying to GitHub Pages
+- Accessing private repositories
+
+Falls back to `github.token` if not provided, but a PAT with full `repo` scope is recommended.
+
+**Setup:**
+
+1. Create a Personal Access Token with `repo` scope
+2. Add it to repository secrets as `GH_PAT`
+
+### SECRETS_CONTEXT
+
+<ParamField path="SECRETS_CONTEXT" type="string">
+  JSON object containing all repository secrets
+</ParamField>
+
+Allows the action to access secrets referenced in `.upptimerc.yml` (e.g., notification webhooks, SMTP passwords).
+
+**Usage:**
+
+```yaml
+env:
+  SECRETS_CONTEXT: ${{ toJson(secrets) }}
+```
+
+## Manual Triggers
+
+You can manually trigger any workflow using:
+
+### GitHub UI
+
+1. Go to the **Actions** tab
+2. Select the workflow from the left sidebar
+3. Click **Run workflow**
+4. Choose the branch and click **Run workflow**
+
+### GitHub CLI
+
+```bash
+# Trigger uptime check
+gh workflow run "Uptime CI"
+
+# Trigger response time update
+gh workflow run "Response Time CI"
+
+# Trigger graph generation
+gh workflow run "Graphs CI"
+
+# Trigger site rebuild
+gh workflow run "Static Site CI"
+
+# Trigger README update
+gh workflow run "Summary CI"
+
+# Trigger full setup
+gh workflow run "Setup CI"
+```
+
+### Repository Dispatch API
+
+```bash
+curl -X POST \
+  https://api.github.com/repos/{owner}/{repo}/dispatches \
+  -H "Accept: application/vnd.github.v3+json" \
+  -H "Authorization: token YOUR_TOKEN" \
+  -d '{"event_type":"uptime"}'
+```
+
+Event types:
+- `uptime` - Trigger Uptime CI
+- `response_time` - Trigger Response Time CI
+- `graphs` - Trigger Graphs CI
+- `static_site` - Trigger Static Site CI
+- `summary` - Trigger Summary CI
+- `setup` - Trigger Setup CI
+
+## Workflow Customization
+
+### Changing Schedules
+
+Edit `.upptimerc.yml`:
+
+```yaml
+workflowSchedule:
+  uptime: "*/10 * * * *"      # Every 10 minutes
+  responseTime: "0 */6 * * *"  # Every 6 hours
+  graphs: "0 2 * * *"          # Daily at 2 AM UTC
+  site: "0 3 * * *"            # Daily at 3 AM UTC
+```
+
+After changing schedules, the Setup workflow will automatically regenerate the workflow files.
+
+### Disabling Workflows
+
+To disable a workflow:
+
+1. Go to **Actions** > **Workflows**
+2. Select the workflow
+3. Click the **...** menu
+4. Select **Disable workflow**
+
+Or via GitHub CLI:
+
+```bash
+gh workflow disable "Graphs CI"
+```
+
+## Action Version
+
+All workflows use the Upptime action:
+
+```yaml
+uses: upptime/uptime-monitor@v1.41.0
+```
+
+The version is automatically updated when you run the Setup workflow. You can also manually update the version in `.upptimerc.yml` (if supported) or by editing workflow files directly (though this is not recommended as they are auto-generated).
+
+## Workflow Outputs
+
+Workflows produce several types of output:
+
+### Git Commits
+
+- History updates (`history/{site}.yml`)
+- Response time data (`api/{site}/`)
+- Graphs (`graphs/{site}/`)
+- README updates
+- Workflow file updates
+
+### GitHub Issues
+
+- Opened when sites go down
+- Updated with incident reports
+- Closed when sites recover
+
+### GitHub Pages Deployment
+
+- Static status page deployed to `gh-pages` branch
+- Accessible at your configured domain or GitHub Pages URL
+
+## Troubleshooting
+
+### Workflow not running
+
+- Check that Actions are enabled in repository settings
+- Verify cron schedule syntax
+- Check workflow dispatch permissions
+
+### Permission errors
+
+- Ensure `GH_PAT` has `repo` scope
+- Check repository Actions permissions
+- Verify GitHub Pages is enabled
+
+### Build failures
+
+- Check Action logs in the Actions tab
+- Verify `.upptimerc.yml` syntax
+- Ensure all required secrets are configured
+
+## Next Steps
+
+<Card title="Configuration Reference" icon="gear" href="/api/configuration-reference">
+  Complete schema for `.upptimerc.yml`
+</Card>
+
+<Card title="API Overview" icon="code" href="/api/overview">
+  Access uptime and response time data programmatically
+</Card>

@@ -1,0 +1,311 @@
+---
+title: '.upptimerc.yml Reference'
+description: 'Complete configuration reference for the .upptimerc.yml file'
+icon: 'file-code'
+---
+
+The `.upptimerc.yml` file is the main configuration file for your Upptime setup. It defines which sites to monitor, how to display your status page, and various other settings.
+
+## Basic Structure
+
+Every Upptime repository needs a `.upptimerc.yml` file in the root directory. Here's a minimal example:
+
+```yaml
+owner: your-username
+repo: upptime
+
+sites:
+  - name: Google
+    url: https://www.google.com
+
+status-website:
+  cname: demo.upptime.js.org
+```
+
+## Required Configuration
+
+<ParamField path="owner" type="string" required>
+  Your GitHub organization or username where the Upptime repository lives.
+
+  ```yaml
+  owner: upptime
+  ```
+</ParamField>
+
+<ParamField path="repo" type="string" required>
+  The name of your Upptime repository.
+
+  ```yaml
+  repo: upptime
+  ```
+</ParamField>
+
+<ParamField path="sites" type="array" required>
+  An array of sites to monitor. Each site requires a `name` and `url` at minimum. See [Sites Configuration](/configuration/sites) for detailed options.
+
+  ```yaml
+  sites:
+    - name: Google
+      url: https://www.google.com
+    - name: Wikipedia
+      url: https://en.wikipedia.org
+  ```
+</ParamField>
+
+## Status Website Configuration
+
+<ParamField path="status-website" type="object">
+  Configuration for your status page appearance and behavior.
+
+  <Expandable title="Status Website Options">
+    <ParamField path="cname" type="string">
+      Your custom domain name for the status page. Remove this if you don't have a custom domain.
+
+      ```yaml
+      status-website:
+        cname: demo.upptime.js.org
+      ```
+    </ParamField>
+
+    <ParamField path="baseUrl" type="string">
+      The base URL path for your status page. Use this if you don't have a custom domain and are hosting on GitHub Pages.
+
+      ```yaml
+      status-website:
+        baseUrl: /your-repo-name
+      ```
+    </ParamField>
+
+    <ParamField path="logoUrl" type="string">
+      URL to your logo image. Can be an absolute URL or a relative path.
+
+      ```yaml
+      status-website:
+        logoUrl: https://raw.githubusercontent.com/upptime/upptime.js.org/master/static/img/icon.svg
+      ```
+    </ParamField>
+
+    <ParamField path="name" type="string">
+      The name of your status page that appears in the header.
+
+      ```yaml
+      status-website:
+        name: Upptime
+      ```
+    </ParamField>
+
+    <ParamField path="introTitle" type="string">
+      The main title text on your status page. Supports markdown formatting.
+
+      ```yaml
+      status-website:
+        introTitle: "**Upptime** is the open-source uptime monitor and status page"
+      ```
+    </ParamField>
+
+    <ParamField path="introMessage" type="string">
+      A message displayed below the intro title. Supports markdown formatting.
+
+      ```yaml
+      status-website:
+        introMessage: This is a sample status page which uses **real-time** data from our GitHub repository.
+      ```
+    </ParamField>
+
+    <ParamField path="navbar" type="array">
+      Navigation links to display in the navbar.
+
+      ```yaml
+      status-website:
+        navbar:
+          - title: Status
+            href: /
+          - title: GitHub
+            href: https://github.com/$OWNER/$REPO
+      ```
+
+      <Note>Use `$OWNER` and `$REPO` as variables that will be replaced with your configuration values.</Note>
+    </ParamField>
+
+    <ParamField path="theme" type="string" default="light">
+      The color theme for your status page. Options: `light`, `dark`, `night`, or `ocean`.
+
+      ```yaml
+      status-website:
+        theme: dark
+      ```
+    </ParamField>
+
+  </Expandable>
+</ParamField>
+
+## Notification Settings
+
+<ParamField path="assignees" type="array">
+  GitHub usernames to assign to issues when a site goes down.
+
+  ```yaml
+  assignees:
+    - AnandChowdhary
+    - yourUsername
+  ```
+</ParamField>
+
+<ParamField path="notifications" type="array">
+  Configure notifications for when sites go down or come back up.
+
+  <Expandable title="Notification Options">
+    <ParamField path="slack" type="object">
+      Slack webhook configuration.
+
+      ```yaml
+      notifications:
+        - slack:
+            webhookUrl: $SLACK_WEBHOOK_URL
+      ```
+    </ParamField>
+
+    <ParamField path="discord" type="object">
+      Discord webhook configuration.
+
+      ```yaml
+      notifications:
+        - discord:
+            webhookUrl: $DISCORD_WEBHOOK_URL
+      ```
+    </ParamField>
+
+    <ParamField path="telegram" type="object">
+      Telegram bot configuration.
+
+      ```yaml
+      notifications:
+        - telegram:
+            botToken: $TELEGRAM_BOT_TOKEN
+            chatId: $TELEGRAM_CHAT_ID
+      ```
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Monitoring Settings
+
+<ParamField path="skipDescriptionUpdate" type="boolean" default="false">
+  Skip updating the commit descriptions when recording uptime data.
+
+  ```yaml
+  skipDescriptionUpdate: true
+  ```
+</ParamField>
+
+<ParamField path="skipTopicsUpdate" type="boolean" default="false">
+  Skip updating repository topics.
+
+  ```yaml
+  skipTopicsUpdate: true
+  ```
+</ParamField>
+
+<ParamField path="skipHomepageUpdate" type="boolean" default="false">
+  Skip updating the repository homepage URL.
+
+  ```yaml
+  skipHomepageUpdate: true
+  ```
+</ParamField>
+
+<ParamField path="skipDeleteIssues" type="boolean" default="false">
+  Don't delete old issues when they're closed.
+
+  ```yaml
+  skipDeleteIssues: true
+  ```
+</ParamField>
+
+<ParamField path="commitMessages" type="object">
+  Customize commit messages for different operations.
+
+  ```yaml
+  commitMessages:
+    readmeContent: ":pencil: Update summary in README [skip ci]"
+    summaryJson: ":card_file_box: Update status summary [skip ci]"
+    statusChange: "$EMOJI $SITE_NAME is $STATUS ($RESPONSE_CODE in $RESPONSE_TIME ms)"
+    graphsUpdate: ":bento: Update graphs [skip ci]"
+  ```
+</ParamField>
+
+<ParamField path="user-agent" type="string">
+  Custom user agent string for HTTP requests.
+
+  ```yaml
+  user-agent: "MyUptimeBot/1.0"
+  ```
+</ParamField>
+
+<ParamField path="delay" type="number" default="0">
+  Delay between checks in milliseconds.
+
+  ```yaml
+  delay: 1000
+  ```
+</ParamField>
+
+<ParamField path="maxRedirects" type="number" default="5">
+  Maximum number of redirects to follow.
+
+  ```yaml
+  maxRedirects: 3
+  ```
+</ParamField>
+
+## Example Configuration
+
+Here's a complete example with common options:
+
+```yaml
+owner: upptime
+repo: upptime
+
+sites:
+  - name: Google
+    url: https://www.google.com
+  - name: Wikipedia
+    url: https://en.wikipedia.org
+  - name: Hacker News
+    url: https://news.ycombinator.com
+
+status-website:
+  cname: demo.upptime.js.org
+  logoUrl: https://raw.githubusercontent.com/upptime/upptime.js.org/master/static/img/icon.svg
+  name: Upptime
+  introTitle: "**Upptime** is the open-source uptime monitor and status page, powered entirely by GitHub."
+  introMessage: This is a sample status page which uses **real-time** data from our [GitHub repository](https://github.com/upptime/upptime).
+  navbar:
+    - title: Status
+      href: /
+    - title: GitHub
+      href: https://github.com/$OWNER/$REPO
+  theme: light
+
+assignees:
+  - AnandChowdhary
+
+delay: 1000
+maxRedirects: 5
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configure Sites" icon="globe" href="/configuration/sites">
+    Learn how to configure different types of site monitoring
+  </Card>
+
+  <Card title="Customize Status Page" icon="palette" href="/configuration/customization">
+    Customize the look and feel of your status page
+  </Card>
+
+  <Card title="Workflows" icon="code-branch" href="/configuration/workflows">
+    Understand GitHub Actions workflows
+  </Card>
+</CardGroup>

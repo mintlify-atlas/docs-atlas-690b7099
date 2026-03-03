@@ -1,0 +1,368 @@
+---
+title: Response Time Tracking
+description: Automatic response time measurement and historical graphs for all monitored endpoints
+---
+
+Upptime automatically tracks and visualizes response times for all your monitored endpoints. Response time data is recorded, committed to git, and displayed as interactive graphs on your status page.
+
+## How It Works
+
+Response time tracking runs on a separate workflow from uptime checks:
+
+```yaml .github/workflows/response-time.yml
+name: Response Time CI
+on:
+  schedule:
+    - cron: "0 23 * * *"
+  repository_dispatch:
+    types: [response_time]
+  workflow_dispatch:
+jobs:
+  release:
+    name: Check status
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GH_PAT || github.token }}
+      - name: Update response time
+        uses: upptime/uptime-monitor@v1.41.0
+        with:
+          command: "response-time"
+        env:
+          GH_PAT: ${{ secrets.GH_PAT || github.token }}
+          SECRETS_CONTEXT: ${{ toJson(secrets) }}
+```
+
+<Info>
+Response times are recorded **once per day at 11:00 PM UTC** by default. This is separate from the uptime checks that run every 5 minutes.
+</Info>
+
+## What Gets Measured
+
+For each monitored endpoint, Upptime measures:
+
+- **Total response time** (in milliseconds)
+- **DNS lookup time**
+- **TCP connection time**
+- **TLS handshake time** (for HTTPS)
+- **Time to first byte (TTFB)**
+- **Download time**
+
+<Note>
+The recorded response time is the total time from request start to complete response.
+</Note>
+
+## Response Time Storage
+
+### History Files
+
+Each check updates the site's history file:
+
+```yaml history/google.yml
+url: https://www.google.com
+status: up
+code: 200
+responseTime: 131
+lastUpdated: 2026-03-02T23:16:08.212Z
+startTime: 2020-08-10T07:54:39.000Z
+generator: Upptime <https://github.com/upptime/upptime>
+```
+
+### API Endpoints
+
+Aggregated data is stored as JSON for different time periods:
+
+<Tabs>
+  <Tab title="Daily">
+    ```json api/google/response-time-day.json
+    {
+      "schemaVersion": 1,
+      "label": "response time 24h",
+      "message": "131 ms",
+      "color": "brightgreen"
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Weekly">
+    ```json api/google/response-time-week.json
+    {
+      "schemaVersion": 1,
+      "label": "response time 7d",
+      "message": "176 ms",
+      "color": "brightgreen"
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Monthly">
+    ```json api/google/response-time-month.json
+    {
+      "schemaVersion": 1,
+      "label": "response time 30d",
+      "message": "127 ms",
+      "color": "brightgreen"
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Yearly">
+    ```json api/google/response-time-year.json
+    {
+      "schemaVersion": 1,
+      "label": "response time 1y",
+      "message": "132 ms",
+      "color": "brightgreen"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Graph Generation
+
+Response time graphs are generated daily by the `graphs.yml` workflow:
+
+```yaml .github/workflows/graphs.yml
+name: Graphs CI
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  repository_dispatch:
+    types: [graphs]
+  workflow_dispatch:
+jobs:
+  release:
+    name: Generate graphs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GH_PAT || github.token }}
+      - name: Generate graphs
+        uses: upptime/uptime-monitor@v1.41.0
+        with:
+          command: "graphs"
+        env:
+          GH_PAT: ${{ secrets.GH_PAT || github.token }}
+```
+
+<Note>
+Graphs are generated **once per day at midnight UTC** to keep your status page up-to-date.
+</Note>
+
+## Visualization
+
+The status page displays response time data in multiple formats:
+
+<Accordion title="Line Graphs">
+Interactive SVG graphs showing response time trends over:
+- Last 24 hours
+- Last 7 days
+- Last 30 days
+- Last year
+- All time
+</Accordion>
+
+<Accordion title="Badges">
+Shields.io-style badges for embedding in README files:
+
+```markdown
+![Response time](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/upptime/upptime/HEAD/api/google/response-time.json)
+```
+</Accordion>
+
+<Accordion title="Statistics">
+Aggregated statistics displayed on the status page:
+- Current response time
+- Average response time (multiple periods)
+- Minimum and maximum values
+- Percentile calculations
+</Accordion>
+
+## Performance Indicators
+
+Response times are color-coded for easy interpretation:
+
+<CardGroup cols={4}>
+  <Card title="Excellent" icon="circle" iconType="solid" color="#00c853">
+    0-200ms
+  </Card>
+  
+  <Card title="Good" icon="circle" iconType="solid" color="#64dd17">
+    200-500ms
+  </Card>
+  
+  <Card title="Fair" icon="circle" iconType="solid" color="#ffc107">
+    500-1000ms
+  </Card>
+  
+  <Card title="Slow" icon="circle" iconType="solid" color="#dc3545">
+    1000ms+
+  </Card>
+</CardGroup>
+
+## Historical Data
+
+All response time data is stored in git, providing:
+
+- **Complete history** since monitoring started
+- **Git-based audit trail** of all measurements
+- **Commit-level granularity** for each data point
+- **Branch/tag support** for historical analysis
+
+### Viewing History
+
+You can view the complete history of any site:
+
+```bash
+# View all commits for a site's history
+git log history/google.yml
+
+# See response time at a specific date
+git show HEAD@{2024-01-01}:history/google.yml
+```
+
+## Configuration Options
+
+### Custom Collection Schedule
+
+Modify the response time collection frequency:
+
+```yaml .upptimerc.yml
+workflowSchedule:
+  responseTime: "0 */6 * * *"  # Every 6 hours instead of daily
+  graphs: "0 0 * * *"          # Keep graphs at midnight
+  uptime: "*/5 * * * *"        # Uptime checks every 5 minutes
+```
+
+### Expected Response Times
+
+Set expected response time thresholds:
+
+```yaml .upptimerc.yml
+sites:
+  - name: My API
+    url: https://api.example.com
+    expectedStatusCodes:
+      - 200
+      - 201
+    maxResponseTime: 2000  # Alert if response time exceeds 2 seconds
+```
+
+<Warning>
+Increasing the response time collection frequency will consume more GitHub Actions minutes.
+</Warning>
+
+## README Integration
+
+Upptime automatically updates your README with response time data:
+
+```yaml .github/workflows/summary.yml
+name: Summary CI
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+jobs:
+  release:
+    name: Generate README
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Update summary in README
+        uses: upptime/uptime-monitor@v1.41.0
+        with:
+          command: "readme"
+        env:
+          GH_PAT: ${{ secrets.GH_PAT || github.token }}
+```
+
+This generates a table with response time graphs and statistics.
+
+## Using Response Time Data
+
+### API Access
+
+Access response time data programmatically:
+
+```javascript
+// Fetch current response time
+const response = await fetch(
+  'https://raw.githubusercontent.com/upptime/upptime/HEAD/api/google/response-time.json'
+);
+const data = await response.json();
+console.log(`Response time: ${data.message}`);
+```
+
+### GitHub API
+
+Query historical data using the GitHub API:
+
+```bash
+curl -H "Accept: application/vnd.github.v3+json" \
+  https://api.github.com/repos/upptime/upptime/commits?path=history/google.yml
+```
+
+## Performance Optimization
+
+<Accordion title="Reduce Data Volume">
+Limit the number of historical data points:
+
+```yaml
+commitMessages:
+  responseTimeCommitMessage: "🟩 {site} ({responseTime}ms)"
+  
+# Squash old commits periodically to reduce repo size
+```
+</Accordion>
+
+<Accordion title="Graph Image Format">
+Graphs are generated as optimized SVG for fast loading:
+- Small file size
+- Scalable to any resolution
+- Embedded directly in HTML
+</Accordion>
+
+<Accordion title="CDN Caching">
+GitHub's CDN automatically caches:
+- API JSON files
+- Graph images
+- Status page assets
+</Accordion>
+
+## Alerts and Thresholds
+
+While Upptime doesn't have built-in response time alerts, you can:
+
+1. Use GitHub Actions to parse response time data
+2. Send notifications when thresholds are exceeded
+3. Integrate with external monitoring tools
+
+```yaml
+# Custom workflow to alert on slow response times
+name: Response Time Alert
+on:
+  workflow_run:
+    workflows: ["Response Time CI"]
+    types: [completed]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check response times
+        run: |
+          # Parse response time data and alert if needed
+          # Send notification via Slack, email, etc.
+```
+
+## Next Steps
+
+- Configure [Notifications](/features/notifications) for alerts
+- Learn about [Uptime Monitoring](/features/uptime-monitoring)
+- Explore [Incident Management](/features/incidents)

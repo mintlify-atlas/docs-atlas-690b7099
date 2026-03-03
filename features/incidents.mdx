@@ -1,0 +1,312 @@
+---
+title: Incident Management
+description: Automatic incident tracking using GitHub Issues for transparent status updates
+---
+
+Upptime uses GitHub Issues to manage incidents. When a site goes down, an issue is automatically opened. When it comes back up, the issue is automatically closed. This provides a transparent, git-based incident management system.
+
+## How It Works
+
+When the uptime workflow detects a site is down:
+
+1. A GitHub Issue is **automatically opened**
+2. The issue is labeled with the site name
+3. Team members can be **automatically assigned**
+4. Subsequent checks **update the issue**
+5. When the site recovers, the issue is **automatically closed**
+
+<Info>
+All incidents are tracked in your repository's Issues tab, providing complete transparency and history.
+</Info>
+
+## Issue Templates
+
+Upptime includes built-in issue templates for different scenarios:
+
+### Automatic Downtime Issues
+
+When Upptime detects downtime, it opens an issue with:
+
+- Site name and URL
+- Current status code or error
+- Timestamp of the incident
+- Link to the status page
+
+### Manual Maintenance Events
+
+You can manually create scheduled maintenance issues using the template:
+
+```markdown .github/ISSUE_TEMPLATE/maintainance-event.md
+---
+name: Maintenance Event
+about: Schedule a work window
+title: "[Scheduled Maintenance] Site down for Maintenance"
+labels: maintenance
+assignees: ''
+---
+
+<!--
+start: 2021-08-24T13:00:00.220Z
+end: 2021-08-24T14:00:00.220Z
+expectedDown: google, hacker-news
+-->
+
+**Additional context**
+Who/what/when/where/why is this maintenance happening
+```
+
+<Note>
+The HTML comments in the template contain structured data that Upptime uses to schedule maintenance windows.
+</Note>
+
+### Bug Reports
+
+For reporting issues with Upptime itself:
+
+```markdown .github/ISSUE_TEMPLATE/bug_report.md
+---
+name: Bug report
+about: Create a report to help us improve
+title: ''
+labels: 'bug'
+assignees: 'AnandChowdhary'
+---
+
+**Describe the bug**
+A clear and concise description of what the bug is.
+
+**To Reproduce**
+Steps to reproduce the behavior
+
+**Expected behavior**
+A clear and concise description of what you expected to happen.
+```
+
+## Issue Configuration
+
+### Assignees
+
+Automatically assign team members to incident issues:
+
+```yaml .upptimerc.yml
+assignees:
+  - username1
+  - username2
+```
+
+When a site goes down, these users will be assigned to the incident issue.
+
+### Labels
+
+Customize labels for better organization:
+
+```yaml .upptimerc.yml
+status-website:
+  labels:
+    - name: incident
+      color: "dc3545"
+    - name: maintenance  
+      color: "ffc107"
+```
+
+## Incident Workflow
+
+<Tabs>
+  <Tab title="Detection">
+    When Upptime detects a site is down:
+    
+    1. Checks if an open issue already exists for this site
+    2. If not, creates a new issue
+    3. Applies labels and assignees
+    4. Posts initial status to the issue
+  </Tab>
+  
+  <Tab title="Updates">
+    While a site remains down:
+    
+    1. Each check updates the issue with current status
+    2. Tracks how long the site has been down
+    3. Team members can add comments with updates
+    4. Comments appear on the status page
+  </Tab>
+  
+  <Tab title="Resolution">
+    When the site comes back online:
+    
+    1. Issue is automatically closed
+    2. Final status is posted
+    3. Total downtime is calculated
+    4. Incident appears in historical records
+  </Tab>
+  
+  <Tab title="History">
+    After resolution:
+    
+    1. Closed issues remain in the repository
+    2. Incident data is used for uptime calculations
+    3. Status page shows incident in history
+    4. Complete audit trail is preserved
+  </Tab>
+</Tabs>
+
+## Incident Reports
+
+Team members can add incident updates by commenting on the issue:
+
+<Accordion title="Status Updates">
+Post updates directly as issue comments:
+
+```markdown
+We're investigating reports of slow response times. The issue appears to be related to database performance.
+```
+
+These updates automatically appear on the status page.
+</Accordion>
+
+<Accordion title="Root Cause Analysis">
+Document findings for future reference:
+
+```markdown
+**Root Cause**: Database connection pool exhaustion
+**Fix Applied**: Increased pool size from 10 to 50 connections
+**Prevention**: Added monitoring alerts for pool usage
+```
+</Accordion>
+
+<Accordion title="Stakeholder Communication">
+Keep stakeholders informed:
+
+```markdown
+**Update 10:30 AM**: Engineering team is aware and investigating
+**Update 11:15 AM**: Issue identified, deploying fix
+**Update 11:45 AM**: Fix deployed, monitoring for stability
+```
+</Accordion>
+
+## Scheduled Maintenance
+
+Schedule planned maintenance to prevent false alarms:
+
+```markdown
+<!--
+start: 2026-03-10T02:00:00.000Z
+end: 2026-03-10T04:00:00.000Z
+expectedDown: 
+  - google
+  - wikipedia
+-->
+
+Scheduled database migration. Services will be unavailable during this window.
+```
+
+<Warning>
+During scheduled maintenance windows, sites marked as `expectedDown` won't trigger incident issues.
+</Warning>
+
+## Issue Permissions
+
+By default, issues are configured to:
+
+- Allow issue creation by the workflow
+- Lock issues to prevent spam
+- Allow team members to comment
+- Automatically close when resolved
+
+### Locking Issues
+
+To prevent non-team members from commenting on sensitive incidents:
+
+```yaml .upptimerc.yml
+workflowSchedule:
+  uptime: "*/5 * * * *"
+  
+issues:
+  lock: true
+```
+
+## Integration with Status Page
+
+Incidents tracked in GitHub Issues automatically appear on your status page:
+
+<CardGroup cols={2}>
+  <Card title="Active Incidents" icon="triangle-exclamation">
+    Open issues appear prominently at the top of the status page
+  </Card>
+  
+  <Card title="Incident History" icon="clock-rotate-left">
+    Closed issues are listed in the history section
+  </Card>
+  
+  <Card title="Update Timeline" icon="timeline">
+    Issue comments appear as incident updates
+  </Card>
+  
+  <Card title="Downtime Duration" icon="hourglass">
+    Calculated from issue open/close timestamps
+  </Card>
+</CardGroup>
+
+## Benefits of GitHub Issues
+
+Using GitHub Issues for incident management provides:
+
+<Accordion title="Transparency">
+All incidents are publicly visible (for public repos), building trust with users.
+</Accordion>
+
+<Accordion title="Audit Trail">
+Complete history of all incidents with timestamps and updates.
+</Accordion>
+
+<Accordion title="Collaboration">
+Team members can discuss and coordinate in issue comments.
+</Accordion>
+
+<Accordion title="Integration">
+Works with GitHub's notification system, mobile apps, and API.
+</Accordion>
+
+<Accordion title="No Extra Tools">
+No need for separate incident management software.
+</Accordion>
+
+## Issue Template Configuration
+
+Customize issue templates in `.github/ISSUE_TEMPLATE/config.yml`:
+
+```yaml .github/ISSUE_TEMPLATE/config.yml
+blank_issues_enabled: true
+contact_links:
+  - name: Feature requests and ideas
+    url: https://github.com/orgs/upptime/discussions/new?category=ideas
+    about: Suggest an idea for this project
+  - name: Questions
+    url: https://github.com/orgs/upptime/discussions/new?category=q-a
+    about: Please ask and answer questions here
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Add Context" icon="comment">
+    Use issue comments to document investigation steps and findings
+  </Card>
+  
+  <Card title="Tag Team Members" icon="at">
+    @mention relevant team members to notify them of incidents
+  </Card>
+  
+  <Card title="Link Related Issues" icon="link">
+    Reference related incidents or PRs for context
+  </Card>
+  
+  <Card title="Update Regularly" icon="arrows-rotate">
+    Post status updates every 30-60 minutes during active incidents
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+- Set up [Notifications](/features/notifications) for instant alerts
+- Learn about [Response Time Tracking](/features/response-time)
+- Explore [Uptime Monitoring](/features/uptime-monitoring) configuration

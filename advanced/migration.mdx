@@ -1,0 +1,468 @@
+---
+title: "Migration Guide"
+description: "Migrating from other monitoring tools to Upptime"
+---
+
+## Overview
+
+This guide helps you migrate from other uptime monitoring services to Upptime while preserving historical data and minimizing downtime.
+
+## Migration Process
+
+The general migration workflow:
+
+1. **Setup Upptime** alongside existing monitoring
+2. **Export data** from current service
+3. **Import historical data** (optional)
+4. **Run parallel** monitoring for verification
+5. **Cutover** to Upptime as primary
+6. **Decommission** old service
+
+## Migrating from Popular Services
+
+### From UptimeRobot
+
+<Steps>
+  <Step title="Export your monitors">
+    UptimeRobot doesn't provide bulk export, but you can access via API:
+
+    ```bash
+    # Get all monitors
+    curl -X POST https://api.uptimerobot.com/v2/getMonitors \
+      -H "Content-Type: application/x-www-form-urlencoded" \
+      -d "api_key=YOUR_API_KEY&format=json" > uptimerobot-monitors.json
+    ```
+  </Step>
+
+  <Step title="Convert to Upptime format">
+    Create a script to convert UptimeRobot monitors to `.upptimerc.yml`:
+
+    ```javascript
+    // convert-uptimerobot.js
+    const fs = require('fs');
+    const uptimerobotData = require('./uptimerobot-monitors.json');
+
+    const sites = uptimerobotData.monitors.map(monitor => ({
+      name: monitor.friendly_name,
+      url: monitor.url,
+      // Map UptimeRobot check intervals to Upptime
+      // UptimeRobot: 60-second checks → Upptime: */1 * * * *
+    }));
+
+    const upptimeConfig = {
+      owner: 'your-github-username',
+      repo: 'upptime',
+      sites: sites,
+      'status-website': {
+        name: 'Status Page',
+        // Add your settings
+      }
+    };
+
+    console.log('# Generated from UptimeRobot');
+    console.log(require('yaml').stringify(upptimeConfig));
+    ```
+
+    Run:
+    ```bash
+    node convert-uptimerobot.js > .upptimerc.yml
+    ```
+  </Step>
+
+  <Step title="Import historical uptime data (optional)">
+    Download uptime history:
+
+    ```bash
+    # Get response time data for each monitor
+    curl -X POST https://api.uptimerobot.com/v2/getMonitors \
+      -d "api_key=YOUR_API_KEY&response_times=1&response_times_limit=365" \
+      > uptimerobot-history.json
+    ```
+
+    Create initial `history/` files:
+
+    ```javascript
+    // import-history.js
+    const fs = require('fs');
+    const yaml = require('yaml');
+    
+    const data = require('./uptimerobot-history.json');
+    
+    data.monitors.forEach(monitor => {
+      const history = {
+        url: monitor.url,
+        status: monitor.status === 2 ? 'up' : 'down',
+        code: 200,
+        responseTime: monitor.average_response_time,
+        lastUpdated: new Date().toISOString(),
+        startTime: new Date(monitor.create_datetime * 1000).toISOString(),
+        generator: 'Upptime <https://github.com/upptime/upptime>'
+      };
+      
+      const filename = monitor.friendly_name.toLowerCase().replace(/\s+/g, '-');
+      fs.writeFileSync(
+        `history/${filename}.yml`,
+        yaml.stringify(history)
+      );
+    });
+    ```
+  </Step>
+
+  <Step title="Update status page links">
+    If you had a custom domain with UptimeRobot, configure it in `.upptimerc.yml`:
+
+    ```yaml
+    status-website:
+      cname: status.yourdomain.com
+    ```
+
+    Update DNS from UptimeRobot's IP to GitHub Pages:
+    ```
+    CNAME: {username}.github.io
+    ```
+  </Step>
+</Steps>
+
+### From Pingdom
+
+<Steps>
+  <Step title="Export Pingdom checks">
+    Use Pingdom API:
+
+    ```bash
+    curl -H "Authorization: Bearer YOUR_TOKEN" \
+      https://api.pingdom.com/api/3.1/checks > pingdom-checks.json
+    ```
+  </Step>
+
+  <Step title="Convert configuration">
+    ```javascript
+    // convert-pingdom.js
+    const pingdomData = require('./pingdom-checks.json');
+
+    const sites = pingdomData.checks.map(check => {
+      const site = {
+        name: check.name,
+        url: check.hostname
+      };
+
+      // Handle Pingdom check types
+      if (check.type === 'http') {
+        site.url = `${check.encryption ? 'https' : 'http'}://${check.hostname}${check.url}`;
+      } else if (check.type === 'ping') {
+        site.url = check.hostname;
+        site.check = 'tcp-ping';
+        site.port = check.port || 80;
+      }
+
+      return site;
+    });
+
+    // Output to .upptimerc.yml
+    ```
+  </Step>
+
+  <Step title="Download historical data">
+    ```bash
+    # Get performance data for each check
+    for CHECK_ID in $(jq -r '.checks[].id' pingdom-checks.json); do
+      curl -H "Authorization: Bearer YOUR_TOKEN" \
+        "https://api.pingdom.com/api/3.1/summary.performance/$CHECK_ID?from=$(date -d '365 days ago' +%s)" \
+        > pingdom-history-$CHECK_ID.json
+    done
+    ```
+  </Step>
+</Steps>
+
+### From StatusCake
+
+<Steps>
+  <Step title="Export tests via API">
+    ```bash
+    curl -H "API: YOUR_API_KEY" \
+      -H "Username: YOUR_USERNAME" \
+      https://app.statuscake.com/API/Tests/ > statuscake-tests.json
+    ```
+  </Step>
+
+  <Step title="Convert to Upptime">
+    ```javascript
+    const tests = require('./statuscake-tests.json');
+
+    const sites = tests.map(test => ({
+      name: test.WebsiteName,
+      url: test.WebsiteURL,
+      // StatusCake check rate to Upptime cron
+      // 300 seconds → */5 * * * *
+    }));
+    ```
+  </Step>
+</Steps>
+
+### From Freshping (Freshworks)
+
+<Steps>
+  <Step title="Export configuration">
+    Freshping doesn't have a public API. Manual export required:
+
+    1. Go to Freshping dashboard
+    2. Document each check's:
+       - URL
+       - Name
+       - Check interval
+       - Expected status codes
+  </Step>
+
+  <Step title="Manually create .upptimerc.yml">
+    ```yaml
+    owner: your-username
+    repo: upptime
+
+    sites:
+      - name: Website 1  # From Freshping
+        url: https://example1.com
+      
+      - name: Website 2
+        url: https://example2.com
+        expectedStatusCodes:
+          - 200
+          - 301
+    ```
+  </Step>
+</Steps>
+
+### From Self-Hosted Solutions
+
+#### From Uptime Kuma
+
+<Steps>
+  <Step title="Export from Uptime Kuma">
+    In Uptime Kuma UI:
+    1. Settings → Backup
+    2. Download JSON export
+  </Step>
+
+  <Step title="Convert monitors">
+    ```javascript
+    const kuma = require('./uptime-kuma-backup.json');
+
+    const sites = kuma.monitorList.map(monitor => {
+      const site = { name: monitor.name };
+
+      if (monitor.type === 'http' || monitor.type === 'keyword') {
+        site.url = monitor.url;
+      } else if (monitor.type === 'ping') {
+        site.url = monitor.hostname;
+        site.check = 'tcp-ping';
+        site.port = monitor.port;
+      } else if (monitor.type === 'port') {
+        site.url = monitor.hostname;
+        site.port = monitor.port;
+        site.check = 'tcp-ping';
+      }
+
+      if (monitor.maxredirects > 0) {
+        site.maxRedirects = monitor.maxredirects;
+      }
+
+      return site;
+    });
+    ```
+  </Step>
+</Steps>
+
+#### From Prometheus + Blackbox Exporter
+
+```yaml
+# Convert Blackbox targets to Upptime sites
+# blackbox.yml modules → .upptimerc.yml sites
+
+sites:
+  # From Blackbox http_2xx module
+  - name: HTTP Service
+    url: https://example.com
+    expectedStatusCodes:
+      - 200
+
+  # From Blackbox tcp_connect module
+  - name: TCP Service
+    url: example.com
+    port: 443
+    check: "tcp-ping"
+```
+
+## Preserving Historical Data
+
+### Creating Initial History Files
+
+If you have historical uptime data, create initial `history/` files:
+
+```javascript
+// create-history.js
+const fs = require('fs');
+const yaml = require('yaml');
+
+function createHistory(siteName, url, startDate) {
+  const history = {
+    url: url,
+    status: 'up',
+    code: 200,
+    responseTime: 0,  // Will be updated on first check
+    lastUpdated: new Date().toISOString(),
+    startTime: startDate,
+    generator: 'Upptime <https://github.com/upptime/upptime>'
+  };
+
+  const filename = siteName.toLowerCase().replace(/\s+/g, '-');
+  fs.mkdirSync('history', { recursive: true });
+  fs.writeFileSync(
+    `history/${filename}.yml`,
+    yaml.stringify(history)
+  );
+}
+
+// Usage
+createHistory('My Website', 'https://example.com', '2020-01-01T00:00:00.000Z');
+```
+
+### Backfilling Response Time Data
+
+If you have historical response time data, commit it to Git history:
+
+```bash
+#!/bin/bash
+# backfill-data.sh
+
+# For each historical data point
+while IFS=, read -r date site response_time; do
+  # Update API files
+  echo "{\"schemaVersion\":1,\"label\":\"response time\",\"message\":\"${response_time} ms\",\"color\":\"brightgreen\"}" \
+    > "api/${site}/response-time.json"
+  
+  # Commit with historical date
+  git add "api/${site}/"
+  GIT_AUTHOR_DATE="$date" GIT_COMMITTER_DATE="$date" \
+    git commit -m "Update response time for ${site}: ${response_time}ms"
+done < historical-data.csv
+```
+
+## Parallel Monitoring Period
+
+Run both systems simultaneously to verify accuracy:
+
+```yaml
+# .upptimerc.yml - start with longer intervals
+workflowSchedule:
+  uptime: "*/15 * * * *"  # Every 15 minutes during testing
+
+sites:
+  - name: Critical Service
+    url: https://example.com
+    # Monitor same endpoints as old service
+```
+
+Compare results for 7-14 days before full cutover.
+
+## Cutover Checklist
+
+<Steps>
+  <Step title="Verify Upptime is working">
+    - [ ] All sites showing correct status
+    - [ ] Response times are reasonable
+    - [ ] Status page accessible
+    - [ ] Notifications configured and working
+  </Step>
+
+  <Step title="Update integrations">
+    - [ ] Update monitoring dashboards
+    - [ ] Switch alerting to Upptime notifications
+    - [ ] Update documentation with new status page URL
+    - [ ] Inform team of new system
+  </Step>
+
+  <Step title="DNS cutover (if using custom domain)">
+    ```bash
+    # Update DNS records
+    # Old: status.example.com → old-service.com
+    # New: status.example.com → {username}.github.io
+    ```
+  </Step>
+
+  <Step title="Decommission old service">
+    - [ ] Export final data backup
+    - [ ] Cancel subscription (if paid)
+    - [ ] Archive old configuration
+    - [ ] Remove old integrations
+  </Step>
+</Steps>
+
+## Cost Comparison
+
+<CardGroup cols={2}>
+  <Card title="UptimeRobot" icon="robot">
+    **Free**: 50 monitors, 5-min checks
+    **Pro**: $7/month for 50 monitors, 1-min checks
+  </Card>
+
+  <Card title="Pingdom" icon="chart-line">
+    **Starter**: $10/month for 10 monitors
+    **Advanced**: $42/month for 50 monitors
+  </Card>
+
+  <Card title="StatusCake" icon="cake-candles">
+    **Free**: 10 monitors, 5-min checks
+    **Superior**: $24.99/month unlimited
+  </Card>
+
+  <Card title="Upptime" icon="github">
+    **Free**: Unlimited monitors
+    **Cost**: GitHub Actions minutes (2,000/month free)
+  </Card>
+</CardGroup>
+
+## Migration Tools
+
+We've created helper tools for common migrations:
+
+```bash
+# Install Upptime migration toolkit
+npm install -g @upptime/migration-tools
+
+# Convert from UptimeRobot
+upptime-migrate --from uptimerobot --api-key YOUR_KEY
+
+# Convert from Pingdom
+upptime-migrate --from pingdom --token YOUR_TOKEN
+
+# Convert from exported JSON
+upptime-migrate --from json --file monitors.json
+```
+
+## Post-Migration Optimization
+
+After migrating, optimize your setup:
+
+1. **Adjust check frequencies** based on needs:
+   ```yaml
+   workflowSchedule:
+     uptime: "*/5 * * * *"  # Critical sites: every 5 min
+   ```
+
+2. **Configure notifications** for your team:
+   ```yaml
+   notifications:
+     - type: slack
+       webhook-url: $SLACK_WEBHOOK
+   ```
+
+3. **Customize status page** to match your branding
+
+4. **Set up custom domain** for professional appearance
+
+## Getting Help
+
+If you encounter issues during migration:
+
+- Check the [Upptime GitHub Discussions](https://github.com/upptime/upptime/discussions)
+- Review migration examples in the [Upptime repository](https://github.com/upptime/upptime/issues?q=label%3Amigration)
+- Ask in the community for service-specific migration help

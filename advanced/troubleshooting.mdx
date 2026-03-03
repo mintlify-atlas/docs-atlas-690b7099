@@ -1,0 +1,430 @@
+---
+title: "Troubleshooting"
+description: "Common issues and solutions for Upptime"
+---
+
+## Common Issues
+
+This guide covers the most frequently encountered issues and their solutions.
+
+## Workflow Issues
+
+<AccordionGroup>
+  <Accordion title="Workflows not running automatically">
+    **Symptoms**: GitHub Actions workflows don't run on schedule
+
+    **Common causes**:
+    1. Repository is inactive (GitHub disables scheduled workflows after 60 days of no repository activity)
+    2. Workflow file syntax errors
+    3. GitHub Actions disabled in repository settings
+
+    **Solutions**:
+
+    ```bash
+    # 1. Check workflow status
+    gh workflow list
+
+    # 2. Enable workflow if disabled
+    gh workflow enable "Uptime CI"
+
+    # 3. Manually trigger to test
+    gh workflow run "Uptime CI"
+
+    # 4. Verify cron syntax in .github/workflows/uptime.yml
+    # Should be: cron: "*/5 * * * *" for every 5 minutes
+    ```
+
+    **Prevention**:
+    - Keep repository active with commits
+    - Add a dummy workflow that runs weekly to keep Actions active
+    - Monitor workflow runs in Actions tab
+  </Accordion>
+
+  <Accordion title="Workflow failing with 'GH_PAT' error">
+    **Symptoms**: Workflows fail with authentication errors
+
+    **Error message**:
+    ```
+    Error: Process completed with exit code 1.
+    HttpError: Resource not accessible by integration
+    ```
+
+    **Solutions**:
+
+    1. **Create a Personal Access Token**:
+       - Go to GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)
+       - Click "Generate new token (classic)"
+       - Select scopes: `repo`, `workflow`
+       - Copy the token
+
+    2. **Add token to repository secrets**:
+       - Go to your repository → Settings → Secrets and variables → Actions
+       - Click "New repository secret"
+       - Name: `GH_PAT`
+       - Value: paste your token
+
+    3. **Verify `.upptimerc.yml` references the secret**:
+       ```yaml
+       # Workflows should use: ${{ secrets.GH_PAT || github.token }}
+       ```
+  </Accordion>
+
+  <Accordion title="Workflows running but not committing changes">
+    **Symptoms**: Checks run successfully but `history/` and `api/` folders don't update
+
+    **Solutions**:
+
+    ```bash
+    # Check if changes are being made locally
+    git pull origin master
+    git log --oneline -10
+
+    # Verify GH_PAT permissions include 'repo' scope
+    # Check workflow logs for commit attempts
+    ```
+
+    **Common causes**:
+    - Insufficient token permissions
+    - Protected branch rules blocking commits
+    - Workflow using wrong branch reference
+
+    **Fix protected branches**:
+    - Go to Settings → Branches → Branch protection rules
+    - Allow GitHub Actions to bypass protection
+    - Or add `upptime-bot` to allowed users
+  </Accordion>
+
+  <Accordion title="Rate limiting errors">
+    **Symptoms**: Workflows fail with rate limit messages
+
+    **Error message**:
+    ```
+    Error: API rate limit exceeded
+    ```
+
+    **Solutions**:
+
+    1. **Use authenticated requests** (ensure `GH_PAT` is set)
+    2. **Reduce check frequency** in `.upptimerc.yml`:
+       ```yaml
+       workflowSchedule:
+         graphs: "0 0 * * *"
+         responseTime: "0 23 * * *"
+         staticSite: "0 1 * * *"
+         summary: "0 0 * * *"
+         updateTemplate: "0 0 * * 0"
+         updates: "0 3 * * *"
+         uptime: "*/15 * * * *"  # Changed from */5 to */15
+       ```
+    3. **Spread out workflow schedules** to avoid concurrent API calls
+  </Accordion>
+</AccordionGroup>
+
+## Site Monitoring Issues
+
+<AccordionGroup>
+  <Accordion title="Site showing as 'down' when it's actually up">
+    **Symptoms**: Status page shows site as down, but you can access it
+
+    **Debugging steps**:
+
+    ```bash
+    # 1. Check the actual response from GitHub Actions runner
+    # View workflow logs in Actions tab
+
+    # 2. Test locally with same settings
+    curl -I https://your-site.com
+
+    # 3. Check for SSL/TLS issues
+    curl -vvv https://your-site.com
+
+    # 4. Verify DNS resolution
+    nslookup your-site.com
+    ```
+
+    **Common causes**:
+    - SSL certificate issues (expired, self-signed)
+    - Geo-blocking GitHub's IP ranges
+    - Rate limiting from your server
+    - Incorrect expected status codes
+
+    **Solutions**:
+
+    ```yaml
+    # .upptimerc.yml
+    sites:
+      - name: My Site
+        url: https://example.com
+        expectedStatusCodes:
+          - 200
+          - 201
+          - 301  # Add if site redirects
+        maxResponseTime: 10000  # Increase timeout if needed
+    ```
+  </Accordion>
+
+  <Accordion title="Incorrect response times">
+    **Symptoms**: Response times seem too high or too low
+
+    **Investigation**:
+
+    1. **Check from GitHub Actions runner location** (runners are in Azure data centers)
+    2. **Compare with local measurements**
+    3. **Review historical data** in `api/{site}/response-time-*.json`
+
+    **Understanding response times**:
+    - Upptime measures total request time including DNS, connection, and response
+    - Times are from GitHub's runner location, not your location
+    - Cold starts may show higher initial times
+
+    **Solutions**:
+    ```yaml
+    # Use TCP ping for more accurate server response
+    sites:
+      - name: My Server
+        url: example.com
+        port: 443
+        check: "tcp-ping"
+    ```
+  </Accordion>
+
+  <Accordion title="IPv6 checks failing">
+    **Symptoms**: Sites with `ipv6: true` always show as down
+
+    **Verification**:
+    ```bash
+    # Test IPv6 connectivity
+    ping6 example.com
+    curl -6 https://example.com
+    ```
+
+    **Solutions**:
+    - Ensure your site actually supports IPv6
+    - Use `tcp-ping` check type instead of HTTP
+    - Verify GitHub Actions runners have IPv6 access
+
+    ```yaml
+    sites:
+      - name: IPv6 Site
+        url: example.com
+        port: 443
+        check: "tcp-ping"
+        ipv6: true
+    ```
+  </Accordion>
+
+  <Accordion title="Custom headers not being sent">
+    **Symptoms**: Sites that require authentication or custom headers fail
+
+    **Solutions**:
+
+    ```yaml
+    sites:
+      - name: Authenticated API
+        url: https://api.example.com
+        headers:
+          - "Authorization: Bearer $API_TOKEN"
+          - "User-Agent: Upptime"
+    ```
+
+    Store secrets in GitHub Secrets and reference in workflow:
+    ```yaml
+    env:
+      API_TOKEN: ${{ secrets.API_TOKEN }}
+      SECRETS_CONTEXT: ${{ toJson(secrets) }}
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Status Page Issues
+
+<AccordionGroup>
+  <Accordion title="Status page not updating">
+    **Symptoms**: Status page shows old data or doesn't reflect recent changes
+
+    **Solutions**:
+
+    ```bash
+    # 1. Manually trigger site rebuild
+    gh workflow run "Static Site CI"
+
+    # 2. Check if GitHub Pages is enabled
+    # Settings → Pages → Source should be set to gh-pages branch
+
+    # 3. Clear browser cache
+    # Hard reload: Ctrl+Shift+R (Chrome/Firefox) or Cmd+Shift+R (Mac)
+
+    # 4. Verify site workflow completed
+    gh run list --workflow="Static Site CI"
+    ```
+
+    **Check GitHub Pages deployment**:
+    - Go to repository → Environments → github-pages
+    - View recent deployments
+    - Check for deployment errors
+  </Accordion>
+
+  <Accordion title="Custom domain not working">
+    **Symptoms**: CNAME doesn't resolve or shows 404
+
+    **Setup checklist**:
+
+    1. **Configure in `.upptimerc.yml`**:
+       ```yaml
+       status-website:
+         cname: status.example.com
+       ```
+
+    2. **Add DNS records** at your domain provider:
+       ```
+       Type: CNAME
+       Name: status
+       Value: {username}.github.io
+       ```
+
+    3. **Verify DNS propagation**:
+       ```bash
+       dig status.example.com
+       nslookup status.example.com
+       ```
+
+    4. **Check CNAME file in gh-pages branch**:
+       ```bash
+       gh browse --branch gh-pages
+       # Should see CNAME file with your domain
+       ```
+
+    **Troubleshooting**:
+    - DNS changes can take up to 24 hours
+    - Ensure no baseUrl in config when using custom domain
+    - Check GitHub Pages settings for HTTPS enforcement
+  </Accordion>
+
+  <Accordion title="Graphs not displaying">
+    **Symptoms**: Response time graphs show broken images
+
+    **Solutions**:
+
+    ```bash
+    # 1. Verify graphs are generated
+    ls graphs/{site-name}/
+
+    # 2. Manually trigger graph generation
+    gh workflow run "Graphs CI"
+
+    # 3. Check file sizes (should not be 0 bytes)
+    du -sh graphs/**/*.png
+    ```
+
+    **Common causes**:
+    - Graphs workflow hasn't run yet (runs daily by default)
+    - Insufficient data points (need at least 2 checks)
+    - File path issues with custom baseUrl
+  </Accordion>
+
+  <Accordion title="Styling or theme issues">
+    **Symptoms**: Status page looks broken or unstyled
+
+    **Solutions**:
+
+    1. **Clear site cache**:
+       ```bash
+       rm -rf .cache site/
+       gh workflow run "Static Site CI"
+       ```
+
+    2. **Verify custom CSS** in `.upptimerc.yml`:
+       ```yaml
+       status-website:
+         theme: dark  # or 'light'
+       ```
+
+    3. **Check for conflicting custom CSS**
+    4. **Update template**:
+       ```bash
+       gh workflow run "Update Template CI"
+       ```
+  </Accordion>
+</AccordionGroup>
+
+## Configuration Issues
+
+<AccordionGroup>
+  <Accordion title="Changes to .upptimerc.yml not taking effect">
+    **Symptoms**: Modified configuration doesn't apply
+
+    **Solutions**:
+
+    ```bash
+    # 1. Trigger update workflow
+    gh workflow run "Update Template CI"
+
+    # 2. Wait for workflow to complete
+    gh run watch
+
+    # 3. Verify generated files updated
+    git pull origin master
+    cat .github/workflows/uptime.yml
+    # Should show regenerated comment with timestamp
+    ```
+
+    **Important**:
+    - Workflow files are auto-generated from `.upptimerc.yml`
+    - Never edit workflow files directly (changes will be overwritten)
+    - Changes require running the update-template workflow
+  </Accordion>
+
+  <Accordion title="YAML syntax errors">
+    **Symptoms**: Workflows fail immediately with parsing errors
+
+    **Solutions**:
+
+    ```bash
+    # Validate YAML syntax
+    python -c 'import yaml, sys; yaml.safe_load(sys.stdin)' < .upptimerc.yml
+
+    # Or use online validator
+    # https://www.yamllint.com/
+    ```
+
+    **Common mistakes**:
+    - Incorrect indentation (use 2 spaces)
+    - Missing quotes around special characters
+    - Invalid structure
+
+    **Example fix**:
+    ```yaml
+    # Wrong
+    sites:
+    - name: My Site
+      url: https://example.com
+
+    # Correct
+    sites:
+      - name: My Site
+        url: https://example.com
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Getting Help
+
+If you're still experiencing issues:
+
+1. **Check GitHub Actions logs**:
+   ```bash
+   gh run list --limit 5
+   gh run view {run-id} --log
+   ```
+
+2. **Review Upptime documentation**: [upptime.js.org](https://upptime.js.org)
+
+3. **Search existing issues**: [github.com/upptime/upptime/issues](https://github.com/upptime/upptime/issues)
+
+4. **Create a new issue** with:
+   - Your `.upptimerc.yml` (remove sensitive data)
+   - Workflow logs
+   - Steps to reproduce
+   - Expected vs actual behavior
+
+5. **Join the community**: Check the Upptime GitHub Discussions for community support

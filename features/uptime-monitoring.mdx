@@ -1,0 +1,203 @@
+---
+title: Uptime Monitoring
+description: Learn how Upptime monitors your websites using GitHub Actions and scheduled workflows
+---
+
+Upptime uses GitHub Actions to monitor your websites and APIs at regular intervals. The monitoring system runs completely serverless, with no external infrastructure required.
+
+## How It Works
+
+The uptime monitoring workflow runs on a cron schedule, checking your configured endpoints and recording their status.
+
+<Info>
+By default, Upptime checks your sites **every 5 minutes**. This is configurable in the workflow file.
+</Info>
+
+### The Uptime Workflow
+
+The uptime check is powered by the `uptime.yml` workflow:
+
+```yaml .github/workflows/uptime.yml
+name: Uptime CI
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  repository_dispatch:
+    types: [uptime]
+  workflow_dispatch:
+jobs:
+  release:
+    name: Check status
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GH_PAT || github.token }}
+      - name: Check endpoint status
+        uses: upptime/uptime-monitor@v1.41.0
+        with:
+          command: "update"
+        env:
+          GH_PAT: ${{ secrets.GH_PAT || github.token }}
+          SECRETS_CONTEXT: ${{ toJson(secrets) }}
+```
+
+### Workflow Triggers
+
+The uptime workflow can be triggered in three ways:
+
+<Accordion title="Scheduled (Cron)">
+Runs automatically every 5 minutes:
+```yaml
+schedule:
+  - cron: "*/5 * * * *"
+```
+
+You can customize this schedule using standard cron syntax.
+</Accordion>
+
+<Accordion title="Repository Dispatch">
+Can be triggered programmatically via the GitHub API:
+```yaml
+repository_dispatch:
+  types: [uptime]
+```
+</Accordion>
+
+<Accordion title="Manual Trigger">
+Can be manually triggered from the GitHub Actions UI:
+```yaml
+workflow_dispatch:
+```
+</Accordion>
+
+## Configuring Sites to Monitor
+
+Sites are configured in your `.upptimerc.yml` file:
+
+```yaml .upptimerc.yml
+sites:
+  - name: Google
+    url: https://www.google.com
+  - name: Wikipedia
+    url: https://en.wikipedia.org
+  - name: Hacker News
+    url: https://news.ycombinator.com
+```
+
+### Advanced Check Types
+
+Upptime supports different types of health checks:
+
+<Tabs>
+  <Tab title="HTTP/HTTPS">
+    The default check type for web endpoints:
+    
+    ```yaml
+    sites:
+      - name: My Website
+        url: https://example.com
+    ```
+  </Tab>
+  
+  <Tab title="TCP Ping">
+    For checking TCP connectivity to ports:
+    
+    ```yaml
+    sites:
+      - name: IPv6 test
+        url: forwardemail.net
+        port: 80
+        check: "tcp-ping"
+        ipv6: true
+    ```
+  </Tab>
+  
+  <Tab title="Custom Headers">
+    Add custom headers to your requests:
+    
+    ```yaml
+    sites:
+      - name: API Endpoint
+        url: https://api.example.com
+        headers:
+          - "Authorization: Bearer $SECRET_TOKEN"
+    ```
+  </Tab>
+</Tabs>
+
+## What Gets Checked
+
+For each configured site, Upptime:
+
+1. **Sends a request** to the URL
+2. **Records the HTTP status code** (200, 404, 500, etc.)
+3. **Measures response time** in milliseconds
+4. **Commits the result** to the repository's history
+5. **Opens or closes issues** based on up/down status
+
+<Note>
+All check results are stored in YAML files under the `history/` directory, creating a complete audit trail.
+</Note>
+
+## Status Detection
+
+Upptime determines if a site is up or down based on:
+
+- **HTTP status codes**: 2xx and 3xx are considered "up"
+- **Network connectivity**: Connection timeouts or DNS failures mark sites as "down"
+- **Response time**: Sites that don't respond within the timeout are marked as "down"
+
+### History Files
+
+Each monitored site gets its own history file:
+
+```yaml history/google.yml
+url: https://www.google.com
+status: up
+code: 200
+responseTime: 131
+lastUpdated: 2026-03-02T23:16:08.212Z
+startTime: 2020-08-10T07:54:39.000Z
+generator: Upptime <https://github.com/upptime/upptime>
+```
+
+## GitHub Actions Benefits
+
+Using GitHub Actions for monitoring provides:
+
+<CardGroup cols={2}>
+  <Card title="Zero Cost" icon="dollar-sign">
+    Free for public repositories, included in GitHub Free minutes for private repos
+  </Card>
+  
+  <Card title="No Server Required" icon="server">
+    Completely serverless - no infrastructure to maintain
+  </Card>
+  
+  <Card title="Git-Based History" icon="clock-rotate-left">
+    All monitoring data is versioned in git with complete history
+  </Card>
+  
+  <Card title="Transparent" icon="eye">
+    All workflow runs are visible in the Actions tab
+  </Card>
+</CardGroup>
+
+## Frequency and Limits
+
+<Warning>
+GitHub Actions has usage limits. The free tier includes:
+- **2,000 minutes/month** for private repositories
+- **Unlimited minutes** for public repositories
+
+With checks every 5 minutes, you'll use approximately **8,640 workflow minutes per month** per monitored site.
+</Warning>
+
+## Next Steps
+
+- Learn about [Response Time Tracking](/features/response-time)
+- Configure [Incident Management](/features/incidents)
+- Set up [Notifications](/features/notifications)

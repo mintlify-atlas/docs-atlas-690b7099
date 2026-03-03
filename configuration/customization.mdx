@@ -1,0 +1,412 @@
+---
+title: 'Status Page Customization'
+description: 'Customize the appearance and content of your Upptime status page'
+icon: 'palette'
+---
+
+Upptime's status page is highly customizable. You can change colors, logos, messages, navigation, and more through your `.upptimerc.yml` configuration file.
+
+## Basic Customization
+
+All customization is done in the `status-website` section of `.upptimerc.yml`:
+
+```yaml
+status-website:
+  cname: status.example.com
+  logoUrl: https://example.com/logo.svg
+  name: My Service Status
+  theme: light
+```
+
+## Branding
+
+### Logo
+
+<ParamField path="logoUrl" type="string">
+  URL to your logo image. Supports SVG, PNG, and other image formats.
+
+  ```yaml
+  status-website:
+    logoUrl: https://raw.githubusercontent.com/upptime/upptime.js.org/master/static/img/icon.svg
+  ```
+
+  <Tip>
+    Use SVG format for the best quality at any screen size. Recommended size: 200x200 pixels or larger.
+  </Tip>
+</ParamField>
+
+### Site Name
+
+<ParamField path="name" type="string">
+  The name displayed in the header and browser tab.
+
+  ```yaml
+  status-website:
+    name: Upptime
+  ```
+</ParamField>
+
+### Favicon
+
+The favicon is automatically generated from your logo. To use a custom favicon, add it to the repository and reference it:
+
+```yaml
+status-website:
+  faviconSvg: /favicon.svg
+  # or
+  faviconPng: /favicon.png
+```
+
+## Content Customization
+
+### Introduction Section
+
+<ParamField path="introTitle" type="string">
+  Main headline on your status page. Supports markdown formatting including **bold** and *italic*.
+
+  ```yaml
+  status-website:
+    introTitle: "**Upptime** is the open-source uptime monitor and status page, powered entirely by GitHub."
+  ```
+</ParamField>
+
+<ParamField path="introMessage" type="string">
+  Descriptive text below the title. Supports full markdown including links.
+
+  ```yaml
+  status-website:
+    introMessage: This is a sample status page which uses **real-time** data from our [GitHub repository](https://github.com/upptime/upptime). No server required — just GitHub Actions, Issues, and Pages.
+  ```
+</ParamField>
+
+### Example
+
+```yaml
+status-website:
+  introTitle: "**MyCompany** Service Status"
+  introMessage: |
+    Real-time status and uptime monitoring for all MyCompany services.
+    Subscribe below to receive updates when services experience issues.
+```
+
+## Navigation
+
+### Navbar Links
+
+<ParamField path="navbar" type="array">
+  Add custom navigation links to the top of your status page.
+
+  ```yaml
+  status-website:
+    navbar:
+      - title: Status
+        href: /
+      - title: GitHub
+        href: https://github.com/$OWNER/$REPO
+      - title: Support
+        href: https://support.example.com
+  ```
+
+  <ParamField path="title" type="string">
+    Link text to display
+  </ParamField>
+
+  <ParamField path="href" type="string">
+    URL for the link. Use `$OWNER` and `$REPO` as variables.
+  </ParamField>
+</ParamField>
+
+### Example Navigation
+
+```yaml
+status-website:
+  navbar:
+    - title: Home
+      href: /
+    - title: Documentation
+      href: https://docs.example.com
+    - title: API Status
+      href: https://status.example.com/api
+    - title: Contact
+      href: mailto:support@example.com
+```
+
+## Theme and Colors
+
+### Color Themes
+
+<ParamField path="theme" type="string" default="light">
+  Choose a pre-built color theme:
+  - `light` - Clean light theme (default)
+  - `dark` - Dark mode theme
+  - `night` - Darker night theme
+  - `ocean` - Blue ocean theme
+
+  ```yaml
+  status-website:
+    theme: dark
+  ```
+</ParamField>
+
+### Examples
+
+<Tabs>
+  <Tab title="Light">
+    ```yaml
+    status-website:
+      theme: light
+    ```
+    Clean, professional appearance suitable for most use cases.
+  </Tab>
+
+  <Tab title="Dark">
+    ```yaml
+    status-website:
+      theme: dark
+    ```
+    Easier on the eyes in low-light environments.
+  </Tab>
+
+  <Tab title="Night">
+    ```yaml
+    status-website:
+      theme: night
+    ```
+    High contrast dark theme.
+  </Tab>
+
+  <Tab title="Ocean">
+    ```yaml
+    status-website:
+      theme: ocean
+    ```
+    Blue-tinted theme for a calming appearance.
+  </Tab>
+</Tabs>
+
+## Domain Configuration
+
+### Custom Domain
+
+<ParamField path="cname" type="string">
+  Your custom domain for the status page.
+
+  ```yaml
+  status-website:
+    cname: status.example.com
+  ```
+
+  **DNS Setup:**
+  1. Create a CNAME record pointing to `your-username.github.io`
+  2. Wait for DNS propagation (up to 24 hours)
+  3. GitHub Pages will automatically enable HTTPS
+</ParamField>
+
+### GitHub Pages Subdirectory
+
+<ParamField path="baseUrl" type="string">
+  If you don't have a custom domain, use this to set the base path.
+
+  ```yaml
+  status-website:
+    baseUrl: /upptime
+  ```
+
+  Your status page will be available at `https://your-username.github.io/upptime`
+
+  <Note>
+    Remove or comment out `cname` if using `baseUrl`.
+  </Note>
+</ParamField>
+
+## Meta Tags and SEO
+
+### Custom Meta Tags
+
+Add custom meta tags for better SEO and social sharing:
+
+```yaml
+status-website:
+  metaDescription: "Real-time status and uptime monitoring for MyCompany services"
+  metaImage: https://example.com/og-image.png
+```
+
+## Language and Localization
+
+<ParamField path="i18n" type="object">
+  Customize text strings for internationalization.
+
+  ```yaml
+  status-website:
+    i18n:
+      activeIncidents: "Active Incidents"
+      allSystemsOperational: "All Systems Operational"
+      incidentReport: "Incident Report"
+      activeIncidentSummary: "Opened $OPENED ago with $POSTS posts"
+      degradedPerformance: "Degraded Performance"
+  ```
+</ParamField>
+
+### Available Strings
+
+```yaml
+status-website:
+  i18n:
+    activeIncidents: "Active Incidents"
+    allSystemsOperational: "All Systems Operational" 
+    incidentReport: "Incident Report"
+    activeIncidentSummary: "Opened $OPENED ago with $POSTS posts"
+    footer: "This page is [open source]($REPO), powered by [Upptime](https://upptime.js.org)"
+    degradedPerformance: "Degraded Performance"
+    completeOutage: "Complete Outage"
+    partialOutage: "Partial Outage"
+```
+
+## Status Display Options
+
+### Site Icons
+
+By default, Upptime fetches favicons from each monitored site. You can customize individual site icons in your sites configuration:
+
+```yaml
+sites:
+  - name: Google
+    url: https://www.google.com
+    icon: https://www.google.com/favicon.ico
+```
+
+### Response Time Graphs
+
+Response time graphs are automatically generated. You can customize the time periods shown by adjusting the graph generation settings.
+
+## Complete Example
+
+Here's a fully customized status page configuration:
+
+```yaml
+owner: mycompany
+repo: status
+
+sites:
+  - name: Website
+    url: https://www.example.com
+    icon: https://www.example.com/favicon.ico
+  - name: API
+    url: https://api.example.com/health
+    icon: https://www.example.com/api-icon.png
+  - name: Documentation
+    url: https://docs.example.com
+
+status-website:
+  # Domain
+  cname: status.example.com
+  
+  # Branding
+  name: MyCompany Status
+  logoUrl: https://www.example.com/logo.svg
+  
+  # Content
+  introTitle: "**MyCompany** Service Status"
+  introMessage: |
+    Welcome to the MyCompany status page. Here you can check the real-time 
+    status of our services and view historical uptime data.
+    
+    Subscribe to updates below to receive notifications when services experience issues.
+  
+  # Navigation
+  navbar:
+    - title: Status
+      href: /
+    - title: Main Site
+      href: https://www.example.com
+    - title: Support
+      href: https://support.example.com
+    - title: Twitter
+      href: https://twitter.com/mycompany
+  
+  # Theme
+  theme: dark
+  
+  # Localization
+  i18n:
+    activeIncidents: "Current Incidents"
+    allSystemsOperational: "All Services Operational"
+    footer: "Powered by [Upptime](https://upptime.js.org) | [Status History]($REPO)"
+```
+
+## Preview Changes Locally
+
+To preview your customizations before deploying:
+
+1. Clone your Upptime repository
+2. Update `.upptimerc.yml` with your changes
+3. Trigger the Setup workflow:
+   - Go to **Actions** > **Setup CI** > **Run workflow**
+4. Wait for the Site workflow to complete
+5. Visit your GitHub Pages URL
+
+<Tip>
+  Changes to `.upptimerc.yml` automatically trigger the Setup workflow, which regenerates your status page.
+</Tip>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Keep branding consistent">
+    Use the same logo, colors, and messaging as your main product for a cohesive experience.
+
+    ```yaml
+    status-website:
+      name: MyProduct  # Match your product name
+      logoUrl: https://myproduct.com/logo.svg  # Use same logo
+      theme: dark  # Match your product's theme
+    ```
+  </Accordion>
+
+  <Accordion title="Write clear incident messages">
+    Use the `introMessage` to set expectations about what users can expect from this page.
+
+    ```yaml
+    status-website:
+      introMessage: |
+        Real-time status monitoring for all MyProduct services.
+        **Subscribe below** to receive email updates during incidents.
+    ```
+  </Accordion>
+
+  <Accordion title="Add helpful navigation links">
+    Include links to support, documentation, or social media so users can get help during incidents.
+
+    ```yaml
+    status-website:
+      navbar:
+        - title: Get Support
+          href: https://support.example.com
+        - title: System Status
+          href: /
+        - title: Twitter Updates
+          href: https://twitter.com/myproduct
+    ```
+  </Accordion>
+
+  <Accordion title="Use a custom domain">
+    A custom domain like `status.example.com` looks more professional than `username.github.io/repo`.
+
+    ```yaml
+    status-website:
+      cname: status.example.com
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration Reference" icon="file-code" href="/configuration/upptimerc">
+    Complete .upptimerc.yml reference
+  </Card>
+
+  <Card title="Sites Configuration" icon="globe" href="/configuration/sites">
+    Configure which sites to monitor
+  </Card>
+</CardGroup>

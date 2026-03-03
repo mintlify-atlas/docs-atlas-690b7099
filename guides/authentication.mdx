@@ -1,0 +1,408 @@
+---
+title: "Configuring Authentication"
+description: "Advanced authentication methods for monitoring protected endpoints"
+---
+
+## Overview
+
+Upptime supports various authentication methods to monitor protected endpoints. This guide covers advanced authentication configurations, including OAuth, custom authentication flows, and complex header setups.
+
+## Authentication Types
+
+Upptime can handle multiple authentication patterns:
+
+- HTTP Basic Authentication
+- Bearer tokens (JWT, OAuth access tokens)
+- API keys (custom headers)
+- Session cookies
+- Client certificates
+- Custom authentication flows
+
+## Managing Secrets Securely
+
+### GitHub Repository Secrets
+
+All sensitive credentials should be stored as GitHub Secrets:
+
+<Steps>
+  <Step title="Navigate to repository secrets">
+    1. Go to your repository on GitHub
+    2. Click **Settings** > **Secrets and variables** > **Actions**
+    3. Click **New repository secret**
+  </Step>
+
+  <Step title="Add your secrets">
+    Create secrets for each credential:
+
+    | Secret Name | Example Value | Use Case |
+    |-------------|---------------|----------|
+    | `API_TOKEN` | `sk_live_abc123...` | API authentication |
+    | `BASIC_AUTH_USER` | `monitor` | HTTP Basic Auth username |
+    | `BASIC_AUTH_PASS` | `SecureP@ss123` | HTTP Basic Auth password |
+    | `OAUTH_TOKEN` | `eyJhbGc...` | OAuth bearer token |
+  </Step>
+
+  <Step title="Reference secrets in configuration">
+    Use the `$SECRET_NAME` syntax in your `.upptimerc.yml`:
+
+    ```yaml .upptimerc.yml
+    sites:
+      - name: Protected API
+        url: https://api.example.com/status
+        headers:
+          - "Authorization: Bearer $API_TOKEN"
+    ```
+
+    <Note>
+      Secrets are automatically replaced at runtime by the GitHub Actions workflow. They never appear in logs or commits.
+    </Note>
+  </Step>
+</Steps>
+
+## HTTP Basic Authentication
+
+For services using HTTP Basic Authentication:
+
+### Method 1: Using Authorization Header
+
+```yaml .upptimerc.yml
+sites:
+  - name: Admin Dashboard
+    url: https://admin.example.com
+    headers:
+      - "Authorization: Basic $BASIC_AUTH_USER:$BASIC_AUTH_PASS"
+```
+
+### Method 2: Embedded in URL
+
+```yaml .upptimerc.yml
+sites:
+  - name: Protected Service
+    url: https://$BASIC_AUTH_USER:$BASIC_AUTH_PASS@api.example.com/health
+```
+
+<Warning>
+  The URL method is less secure as the credentials may appear in logs. Prefer the header method.
+</Warning>
+
+## Bearer Token Authentication
+
+### Static Bearer Tokens
+
+For long-lived API tokens:
+
+```yaml .upptimerc.yml
+sites:
+  - name: API Gateway
+    url: https://api.example.com/v1/health
+    headers:
+      - "Authorization: Bearer $API_BEARER_TOKEN"
+```
+
+### JWT Tokens
+
+For JWT-based authentication:
+
+```yaml .upptimerc.yml
+sites:
+  - name: Microservice API
+    url: https://microservice.example.com/health
+    headers:
+      - "Authorization: Bearer $JWT_TOKEN"
+      - "X-Request-ID: upptime-health-check"
+```
+
+<Note>
+  For JWT tokens that expire, you'll need to update the GitHub Secret periodically or implement token refresh using a custom workflow.
+</Note>
+
+## API Key Authentication
+
+### Custom Header Keys
+
+Many services use custom headers for API keys:
+
+```yaml .upptimerc.yml
+sites:
+  - name: External Service
+    url: https://api.service.com/health
+    headers:
+      - "X-API-Key: $SERVICE_API_KEY"
+      - "X-API-Secret: $SERVICE_API_SECRET"
+```
+
+### Query Parameter Keys
+
+For APIs that expect keys in query parameters:
+
+```yaml .upptimerc.yml
+sites:
+  - name: Weather API
+    url: https://api.weather.com/health?apikey=$WEATHER_API_KEY
+```
+
+## OAuth 2.0 Authentication
+
+For OAuth-protected endpoints:
+
+### Using Access Tokens
+
+```yaml .upptimerc.yml
+sites:
+  - name: OAuth Protected API
+    url: https://api.oauth-service.com/health
+    headers:
+      - "Authorization: Bearer $OAUTH_ACCESS_TOKEN"
+```
+
+### Token Refresh Workflow
+
+For expiring OAuth tokens, create a custom workflow to refresh tokens:
+
+<Steps>
+  <Step title="Create token refresh workflow">
+    Add `.github/workflows/refresh-token.yml`:
+
+    ```yaml .github/workflows/refresh-token.yml
+    name: Refresh OAuth Token
+    on:
+      schedule:
+        - cron: '0 */6 * * *'  # Every 6 hours
+      workflow_dispatch:
+
+    jobs:
+      refresh:
+        runs-on: ubuntu-latest
+        steps:
+          - name: Refresh OAuth token
+            run: |
+              RESPONSE=$(curl -X POST https://oauth.example.com/token \
+                -H "Content-Type: application/x-www-form-urlencoded" \
+                -d "grant_type=refresh_token" \
+                -d "client_id=${{ secrets.OAUTH_CLIENT_ID }}" \
+                -d "client_secret=${{ secrets.OAUTH_CLIENT_SECRET }}" \
+                -d "refresh_token=${{ secrets.OAUTH_REFRESH_TOKEN }}")
+              
+              NEW_TOKEN=$(echo $RESPONSE | jq -r .access_token)
+              
+              # Update the secret using GitHub API
+              curl -X PUT \
+                -H "Authorization: token ${{ secrets.GH_PAT }}" \
+                -H "Accept: application/vnd.github.v3+json" \
+                https://api.github.com/repos/${{ github.repository }}/actions/secrets/OAUTH_ACCESS_TOKEN \
+                -d "{\"encrypted_value\":\"$NEW_TOKEN\",\"key_id\":\"${{ secrets.SECRET_KEY_ID }}\"}"
+    ```
+  </Step>
+
+  <Step title="Configure required secrets">
+    Add these secrets to your repository:
+    - `OAUTH_CLIENT_ID`
+    - `OAUTH_CLIENT_SECRET`
+    - `OAUTH_REFRESH_TOKEN`
+    - `GH_PAT` (Personal Access Token with repo scope)
+  </Step>
+</Steps>
+
+## Session Cookie Authentication
+
+For services using cookie-based authentication:
+
+```yaml .upptimerc.yml
+sites:
+  - name: Web Application
+    url: https://app.example.com/health
+    headers:
+      - "Cookie: session=$SESSION_COOKIE"
+```
+
+<Warning>
+  Session cookies typically expire. You'll need to manually update the `SESSION_COOKIE` secret periodically.
+</Warning>
+
+## Multiple Authentication Headers
+
+Combine multiple headers for complex authentication:
+
+```yaml .upptimerc.yml
+sites:
+  - name: Complex API
+    url: https://api.complex.com/health
+    headers:
+      - "Authorization: Bearer $API_TOKEN"
+      - "X-API-Key: $API_KEY"
+      - "X-Tenant-ID: $TENANT_ID"
+      - "X-User-Agent: Upptime Monitor"
+      - "Accept: application/json"
+```
+
+## Client Certificate Authentication
+
+For mTLS (mutual TLS) or client certificate authentication:
+
+<Note>
+  Client certificate authentication requires a custom self-hosted runner with the certificates installed, as GitHub-hosted runners don't support custom certificates.
+</Note>
+
+<Steps>
+  <Step title="Set up self-hosted runner">
+    Install a self-hosted runner with your client certificates:
+
+    1. Install the GitHub Actions runner on your server
+    2. Install the client certificate and key
+    3. Configure the runner to use the certificates
+  </Step>
+
+  <Step title="Modify workflow to use self-hosted runner">
+    Update `.github/workflows/uptime.yml`:
+
+    ```yaml
+    jobs:
+      release:
+        runs-on: self-hosted
+    ```
+  </Step>
+
+  <Step title="Configure the site">
+    ```yaml .upptimerc.yml
+    sites:
+      - name: mTLS Protected Service
+        url: https://mtls.example.com/health
+        # Certificates are handled by the runner environment
+    ```
+  </Step>
+</Steps>
+
+## POST/PUT Requests with Authentication
+
+For health checks that require specific HTTP methods:
+
+```yaml .upptimerc.yml
+sites:
+  - name: GraphQL API
+    method: POST
+    url: https://api.example.com/graphql
+    headers:
+      - "Authorization: Bearer $GRAPHQL_TOKEN"
+      - "Content-Type: application/json"
+    body: |
+      {
+        "query": "{ health { status version } }"
+      }
+    expectedStatusCodes:
+      - 200
+```
+
+## Custom User Agents
+
+Some services require specific user agents:
+
+```yaml .upptimerc.yml
+sites:
+  - name: Restrictive API
+    url: https://api.example.com/health
+    headers:
+      - "User-Agent: Upptime Monitor (contact@yourcompany.com)"
+      - "Authorization: Bearer $API_TOKEN"
+```
+
+## IP Allowlisting
+
+For services that require IP allowlisting:
+
+### GitHub-Hosted Runners
+
+<Warning>
+  GitHub Actions uses dynamic IP addresses. For IP allowlisting, use self-hosted runners with static IPs.
+</Warning>
+
+### Self-Hosted Runners with Static IPs
+
+<Steps>
+  <Step title="Deploy runner with static IP">
+    Set up a self-hosted runner on a server with a static IP address (e.g., AWS EC2 with Elastic IP).
+  </Step>
+
+  <Step title="Allowlist the IP">
+    Add the runner's static IP to your service's allowlist.
+  </Step>
+
+  <Step title="Configure workflow">
+    ```yaml .github/workflows/uptime.yml
+    jobs:
+      release:
+        runs-on: self-hosted
+    ```
+  </Step>
+</Steps>
+
+## Troubleshooting Authentication
+
+### 401 Unauthorized Errors
+
+1. **Verify secret exists**: Check GitHub repository secrets
+2. **Test credentials manually**:
+   ```bash
+   curl -H "Authorization: Bearer YOUR_TOKEN" https://api.example.com/health
+   ```
+3. **Check token expiration**: Ensure tokens haven't expired
+4. **Review secret syntax**: Confirm `$SECRET_NAME` format is correct
+
+### 403 Forbidden Errors
+
+1. **Check permissions**: Ensure the token has required scopes
+2. **Verify IP allowlist**: Confirm GitHub Actions IPs are allowed
+3. **Review rate limits**: Check if you've hit API rate limits
+
+### Secrets Not Being Replaced
+
+1. **Verify secret name**: Must match exactly (case-sensitive)
+2. **Check workflow configuration**: Ensure `SECRETS_CONTEXT` is passed:
+   ```yaml
+   env:
+     SECRETS_CONTEXT: ${{ toJson(secrets) }}
+   ```
+3. **Review logs**: Check workflow logs for error messages
+
+### Authentication Works Locally But Fails in CI
+
+1. **Environment differences**: Verify all required secrets are set
+2. **Network restrictions**: Check if IP allowlisting is required
+3. **Certificate issues**: Self-signed certificates may fail on GitHub-hosted runners
+
+## Security Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Rotate Credentials" icon="rotate">
+    Regularly update authentication tokens and secrets
+  </Card>
+  <Card title="Least Privilege" icon="shield">
+    Use read-only tokens with minimal required permissions
+  </Card>
+  <Card title="Audit Access" icon="clipboard-check">
+    Review who has access to repository secrets
+  </Card>
+  <Card title="Monitor Usage" icon="chart-line">
+    Track authentication failures in workflow logs
+  </Card>
+</CardGroup>
+
+### Credential Rotation Schedule
+
+| Credential Type | Recommended Rotation |
+|----------------|---------------------|
+| API Keys | Every 90 days |
+| OAuth Tokens | Automatic (with refresh) |
+| Basic Auth | Every 180 days |
+| Session Cookies | As needed (on expiry) |
+| Client Certificates | Every 365 days |
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Monitor Private Sites" icon="lock" href="/guides/private-sites">
+    Learn how to monitor private and authenticated endpoints.
+  </Card>
+  <Card title="Workflow Configuration" icon="gears" href="/configuration/workflows">
+    Customize GitHub Actions workflows for advanced use cases.
+  </Card>
+</CardGroup>

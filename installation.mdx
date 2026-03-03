@@ -1,0 +1,414 @@
+---
+title: Installation
+description: Complete guide to installing and configuring Upptime for your monitoring needs
+---
+
+# Installation
+
+This guide provides a comprehensive walkthrough for installing and configuring Upptime. For a faster setup, check out the [Quickstart](/quickstart) guide.
+
+## Prerequisites
+
+Before installing Upptime, you'll need:
+
+- A GitHub account
+- A public GitHub repository (for free Actions and Pages)
+- Websites or APIs to monitor
+
+<Note>
+Upptime works best with public repositories to take advantage of GitHub's free tier:
+- **Public repos**: 2,000 Actions minutes/month free
+- **Private repos**: Limited to 3,000 minutes/month on GitHub Free (may not be sufficient)
+</Note>
+
+## Installation methods
+
+You can install Upptime in two ways:
+
+### Method 1: Use the template repository (recommended)
+
+The easiest way to get started is using the Upptime template:
+
+<Steps>
+  <Step title="Create from template">
+    1. Visit the [Upptime template repository](https://github.com/upptime/upptime)
+    2. Click the green "Use this template" button
+    3. Name your repository (e.g., `upptime`, `status`, or `uptime-monitor`)
+    4. Choose **Public** visibility
+    5. Click "Create repository from template"
+  </Step>
+
+  <Step title="Clone your repository">
+    Clone the newly created repository to your local machine:
+    
+    ```bash
+    git clone https://github.com/your-username/your-repo-name.git
+    cd your-repo-name
+    ```
+  </Step>
+</Steps>
+
+### Method 2: Manual installation
+
+For more control, you can set up Upptime manually:
+
+<Steps>
+  <Step title="Create a new repository">
+    Create a new public repository on GitHub with a README file.
+  </Step>
+
+  <Step title="Create configuration file">
+    Create a `.upptimerc.yml` file in the repository root:
+    
+    ```yaml
+    owner: your-github-username
+    repo: your-repo-name
+    
+    sites:
+      - name: Example Site
+        url: https://example.com
+    
+    status-website:
+      baseUrl: /your-repo-name
+      logoUrl: https://your-logo-url.com/logo.svg
+      name: Status Page
+      introTitle: "**Status** monitoring"
+      introMessage: Monitor our services
+      navbar:
+        - title: Status
+          href: /
+        - title: GitHub
+          href: https://github.com/$OWNER/$REPO
+    ```
+  </Step>
+
+  <Step title="Initialize Upptime">
+    Commit and push the `.upptimerc.yml` file. The workflows will be generated automatically when you set up the GitHub Personal Access Token in the next section.
+  </Step>
+</Steps>
+
+## Configuration
+
+### Basic configuration
+
+The `.upptimerc.yml` file is the heart of your Upptime setup. Here's a detailed breakdown:
+
+#### Repository settings
+
+```yaml
+# Your GitHub username or organization
+owner: your-github-username
+
+# Your repository name
+repo: upptime
+```
+
+#### Sites to monitor
+
+Add all the endpoints you want to monitor:
+
+```yaml
+sites:
+  - name: Google
+    url: https://www.google.com
+  
+  - name: Wikipedia
+    url: https://en.wikipedia.org
+  
+  - name: Hacker News
+    url: https://news.ycombinator.com
+```
+
+Each site requires:
+- `name`: Display name for the site
+- `url`: Full URL to check (must include `https://` or `http://`)
+
+#### Status website configuration
+
+```yaml
+status-website:
+  # Use custom domain (or remove for GitHub Pages default)
+  cname: status.yourdomain.com
+  
+  # Or use baseUrl for GitHub Pages without custom domain
+  # baseUrl: /your-repo-name
+  
+  logoUrl: https://example.com/logo.svg
+  name: Service Status
+  introTitle: "**Upptime** monitoring"
+  introMessage: Real-time monitoring of our services
+  
+  navbar:
+    - title: Status
+      href: /
+    - title: GitHub
+      href: https://github.com/$OWNER/$REPO
+```
+
+<Note>
+Use `cname` for custom domains or `baseUrl` for the default GitHub Pages URL. Don't use both.
+</Note>
+
+### Advanced configuration
+
+#### TCP/UDP monitoring
+
+Monitor non-HTTP services using TCP or UDP ping:
+
+```yaml
+sites:
+  - name: IPv6 test
+    url: forwardemail.net
+    port: 80
+    check: "tcp-ping"
+    ipv6: true
+```
+
+Available check types:
+- `tcp-ping`: TCP connection test
+- `http`: Standard HTTP check (default)
+- `https`: HTTPS check
+
+#### Custom headers and authentication
+
+Add custom headers for authentication:
+
+```yaml
+sites:
+  - name: API with Auth
+    url: https://api.example.com/health
+    headers:
+      - "Authorization: Bearer $API_TOKEN"
+      - "X-Custom-Header: value"
+```
+
+<Warning>
+Store sensitive values like API tokens in GitHub Secrets, not directly in `.upptimerc.yml`. Reference them using `$SECRET_NAME`.
+</Warning>
+
+#### Expected status codes
+
+Customize which HTTP status codes are considered "up":
+
+```yaml
+sites:
+  - name: API Endpoint
+    url: https://api.example.com
+    expectedStatusCodes:
+      - 200
+      - 201
+      - 301
+```
+
+#### Custom check intervals
+
+By default, checks run every 5 minutes. You can customize this in the workflow files after they're generated.
+
+Edit `.github/workflows/uptime.yml`:
+
+```yaml
+on:
+  schedule:
+    - cron: "*/5 * * * *"  # Every 5 minutes
+    # - cron: "*/15 * * * *"  # Every 15 minutes
+    # - cron: "0 * * * *"  # Every hour
+```
+
+<Warning>
+Be mindful of GitHub Actions minutes. More frequent checks consume more minutes.
+</Warning>
+
+## Setting up GitHub Personal Access Token
+
+Upptime requires a Personal Access Token (PAT) to interact with your repository:
+
+<Steps>
+  <Step title="Generate token">
+    1. Go to [GitHub Settings > Developer settings > Personal access tokens](https://github.com/settings/tokens)
+    2. Click "Generate new token (classic)"
+    3. Name it descriptively (e.g., "Upptime Bot")
+    4. Set expiration (recommend "No expiration" for continuous monitoring)
+    5. Select required scopes:
+       - `repo` - Full control of private repositories
+       - `workflow` - Update GitHub Action workflows
+    6. Click "Generate token"
+    7. **Copy the token immediately** - you won't see it again
+  </Step>
+
+  <Step title="Add to repository secrets">
+    1. Navigate to your repository **Settings > Secrets and variables > Actions**
+    2. Click "New repository secret"
+    3. Name: `GH_PAT`
+    4. Value: Paste your Personal Access Token
+    5. Click "Add secret"
+  </Step>
+</Steps>
+
+## Enabling GitHub Pages
+
+Your status page is hosted on GitHub Pages:
+
+<Steps>
+  <Step title="Configure Pages">
+    1. Go to repository **Settings > Pages**
+    2. Under "Source", select "Deploy from a branch"
+    3. Under "Branch", select `gh-pages` and `/ (root)`
+    4. Click "Save"
+  </Step>
+
+  <Step title="Wait for deployment">
+    The `gh-pages` branch is created automatically by the Setup workflow. If it doesn't exist yet:
+    
+    1. Go to **Actions** tab
+    2. Run the "Setup CI" workflow manually
+    3. Wait for completion
+    4. Return to Pages settings and select the branch
+  </Step>
+</Steps>
+
+## Understanding the workflows
+
+Upptime uses several GitHub Actions workflows:
+
+### Uptime CI
+
+**File**: `.github/workflows/uptime.yml`  
+**Schedule**: Every 5 minutes  
+**Purpose**: Checks endpoint status
+
+```yaml
+name: Uptime CI
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: upptime/uptime-monitor@v1.41.0
+        with:
+          command: "update"
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+```
+
+### Response Time CI
+
+**File**: `.github/workflows/response-time.yml`  
+**Schedule**: Daily at 11 PM UTC  
+**Purpose**: Records response times
+
+```yaml
+name: Response Time CI
+on:
+  schedule:
+    - cron: "0 23 * * *"
+```
+
+### Graphs CI
+
+**File**: `.github/workflows/graphs.yml`  
+**Schedule**: Daily at midnight UTC  
+**Purpose**: Generates response time graphs
+
+```yaml
+name: Graphs CI
+on:
+  schedule:
+    - cron: "0 0 * * *"
+```
+
+### Static Site CI
+
+**File**: `.github/workflows/site.yml`  
+**Schedule**: Daily at 1 AM UTC  
+**Purpose**: Builds and deploys status page
+
+### Setup CI
+
+**File**: `.github/workflows/setup.yml`  
+**Trigger**: When `.upptimerc.yml` changes  
+**Purpose**: Regenerates workflows and initial setup
+
+<Note>
+Workflows are auto-generated from your `.upptimerc.yml`. Don't edit them directly - they'll be overwritten. Make changes in the config file instead.
+</Note>
+
+## Custom domain setup
+
+To use a custom domain like `status.yourdomain.com`:
+
+<Steps>
+  <Step title="Update configuration">
+    Edit `.upptimerc.yml`:
+    
+    ```yaml
+    status-website:
+      cname: status.yourdomain.com
+      # Remove or comment out baseUrl
+    ```
+  </Step>
+
+  <Step title="Configure DNS">
+    Add a CNAME record in your DNS provider:
+    
+    | Type  | Name   | Value                        |
+    |-------|--------|------------------------------|
+    | CNAME | status | your-username.github.io      |
+  </Step>
+
+  <Step title="Wait for propagation">
+    DNS changes can take 24-48 hours to propagate. You can check status using:
+    
+    ```bash
+    dig status.yourdomain.com
+    ```
+  </Step>
+</Steps>
+
+## Verification
+
+After installation, verify everything is working:
+
+1. **Check Actions**: Go to the Actions tab and verify workflows are running
+2. **View status page**: Visit your GitHub Pages URL
+3. **Check history**: Look for `history/*.yml` files being created
+4. **Monitor issues**: Wait for a check cycle and ensure no error issues are opened
+
+## Next steps
+
+Your Upptime installation is complete! Here's what to do next:
+
+- [Configure notifications](/features/notifications) for Slack, Discord, or email
+- [Customize your status page](/configuration/customization)
+- [Learn about response time tracking](/features/response-time)
+- [Understand incident management](/features/incidents)
+
+## Troubleshooting
+
+### Workflows not running
+
+- Ensure GitHub Actions are enabled in repository settings
+- Verify the `GH_PAT` secret exists and has correct permissions
+- Check if you've exceeded Actions minutes quota
+
+### Status page shows 404
+
+- Confirm GitHub Pages is enabled and set to `gh-pages` branch
+- Wait 5-10 minutes after the first deployment
+- Check that "Static Site CI" workflow completed successfully
+
+### Sites incorrectly showing as down
+
+- Verify URLs are correct and publicly accessible
+- Check if sites require authentication or have IP restrictions
+- Review workflow logs for specific error messages
+- Consider adding custom headers or expected status codes
+
+### Token expired errors
+
+- Personal Access Tokens can expire
+- Generate a new token and update the `GH_PAT` secret
+- Set tokens to "No expiration" for continuous operation

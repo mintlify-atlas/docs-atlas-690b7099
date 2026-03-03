@@ -1,0 +1,287 @@
+---
+title: "Monitoring Private Sites"
+description: "Configure Upptime to monitor authenticated and private endpoints"
+---
+
+## Overview
+
+Upptime can monitor private websites and endpoints that require authentication. This is essential for monitoring internal services, staging environments, or any endpoint behind authentication.
+
+## Authentication Methods
+
+Upptime supports several authentication methods for monitoring private sites:
+
+- HTTP Basic Authentication
+- Custom HTTP headers (Bearer tokens, API keys)
+- Custom request bodies for POST requests
+- TCP/ICMP ping for private networks
+
+## Monitoring with HTTP Basic Auth
+
+<Steps>
+  <Step title="Add credentials to GitHub Secrets">
+    Store your authentication credentials securely in GitHub Secrets:
+
+    1. Go to your repository **Settings** > **Secrets and variables** > **Actions**
+    2. Click **New repository secret**
+    3. Add your credentials:
+       - Name: `PRIVATE_SITE_USERNAME`
+       - Value: `your-username`
+    4. Repeat for password:
+       - Name: `PRIVATE_SITE_PASSWORD`
+       - Value: `your-password`
+
+    <Warning>
+      Never commit credentials directly in `.upptimerc.yml`. Always use GitHub Secrets.
+    </Warning>
+  </Step>
+
+  <Step title="Configure site in .upptimerc.yml">
+    Add your private site with the `__SECRETS` placeholder syntax:
+
+    ```yaml .upptimerc.yml
+    sites:
+      - name: Private Dashboard
+        url: https://private.example.com/admin
+        headers:
+          - "Authorization: Basic $PRIVATE_SITE_USERNAME:$PRIVATE_SITE_PASSWORD"
+    ```
+
+    Upptime will automatically replace `$SECRET_NAME` with the actual secret value from GitHub Actions.
+  </Step>
+
+  <Step title="Test the configuration">
+    Commit and push your changes. The next scheduled check will use your credentials:
+
+    ```bash
+    git add .upptimerc.yml
+    git commit -m "Add private site monitoring"
+    git push
+    ```
+
+    Monitor the GitHub Actions workflow to ensure the authentication succeeds.
+  </Step>
+</Steps>
+
+## Using Bearer Tokens
+
+For APIs that use Bearer token authentication:
+
+```yaml .upptimerc.yml
+sites:
+  - name: Internal API
+    url: https://api.internal.com/health
+    headers:
+      - "Authorization: Bearer $API_TOKEN"
+```
+
+Store `API_TOKEN` in your GitHub repository secrets.
+
+## Custom Headers for API Keys
+
+Many APIs use custom headers for authentication:
+
+```yaml .upptimerc.yml
+sites:
+  - name: External Service
+    url: https://api.service.com/status
+    headers:
+      - "X-API-Key: $SERVICE_API_KEY"
+      - "X-Client-ID: $SERVICE_CLIENT_ID"
+```
+
+<Note>
+  You can add multiple headers for complex authentication schemes or to pass additional metadata.
+</Note>
+
+## POST Requests with Authentication
+
+For endpoints that require POST requests with authentication:
+
+```yaml .upptimerc.yml
+sites:
+  - name: GraphQL Health Check
+    method: POST
+    url: https://api.example.com/graphql
+    headers:
+      - "Authorization: Bearer $GRAPHQL_TOKEN"
+      - "Content-Type: application/json"
+    body: '{"query": "{health}"}'
+```
+
+## Monitoring VPN or Internal Networks
+
+### Using Self-Hosted Runners
+
+For services only accessible within your network:
+
+<Steps>
+  <Step title="Set up a self-hosted runner">
+    Install a GitHub Actions self-hosted runner within your private network:
+
+    1. Go to **Settings** > **Actions** > **Runners**
+    2. Click **New self-hosted runner**
+    3. Follow the installation instructions for your OS
+  </Step>
+
+  <Step title="Configure workflows to use the runner">
+    Modify your `.github/workflows/uptime.yml` to target the self-hosted runner:
+
+    ```yaml .github/workflows/uptime.yml
+    jobs:
+      release:
+        runs-on: self-hosted  # Changed from ubuntu-latest
+    ```
+  </Step>
+
+  <Step title="Add internal sites to .upptimerc.yml">
+    Now you can monitor internal URLs:
+
+    ```yaml .upptimerc.yml
+    sites:
+      - name: Internal Service
+        url: http://192.168.1.100:8080/health
+      - name: Database Server
+        url: db.internal.local
+        port: 5432
+        check: "tcp-ping"
+    ```
+  </Step>
+</Steps>
+
+## TCP/ICMP Ping for Private Services
+
+Monitor services by checking if ports are open:
+
+```yaml .upptimerc.yml
+sites:
+  - name: Database Server
+    url: database.internal.com
+    port: 5432
+    check: "tcp-ping"
+  
+  - name: Redis Cache
+    url: redis.internal.com
+    port: 6379
+    check: "tcp-ping"
+  
+  - name: SMTP Server
+    url: smtp.internal.com
+    port: 587
+    check: "tcp-ping"
+```
+
+<Note>
+  TCP ping checks don't validate HTTP responses—they only verify that the port is open and accepting connections.
+</Note>
+
+## Expected Status Codes
+
+Configure expected status codes for private endpoints that return non-200 responses:
+
+```yaml .upptimerc.yml
+sites:
+  - name: Authenticated API
+    url: https://api.example.com/private
+    headers:
+      - "Authorization: Bearer $API_TOKEN"
+    expectedStatusCodes:
+      - 200
+      - 201
+      - 204
+```
+
+## Security Best Practices
+
+<Warning>
+  Follow these security practices when monitoring private sites:
+</Warning>
+
+### Rotate credentials regularly
+
+Update your GitHub Secrets periodically:
+
+1. Generate new credentials in your service
+2. Update the secret in GitHub
+3. Verify the next monitoring run succeeds
+4. Revoke the old credentials
+
+### Use least-privilege access
+
+Create dedicated monitoring accounts with minimal permissions:
+
+- Read-only access to health check endpoints
+- No access to sensitive data or operations
+- Separate from production service accounts
+
+### Audit secret access
+
+Regularly review which workflows and team members can access secrets:
+
+1. Check **Settings** > **Secrets and variables** > **Actions**
+2. Review secret usage in workflow runs
+3. Remove unused secrets
+
+### Use environment-specific secrets
+
+For multiple environments, use environment secrets:
+
+```yaml .upptimerc.yml
+sites:
+  - name: Staging API
+    url: https://staging-api.example.com/health
+    headers:
+      - "Authorization: Bearer $STAGING_API_TOKEN"
+  
+  - name: Production API
+    url: https://api.example.com/health
+    headers:
+      - "Authorization: Bearer $PRODUCTION_API_TOKEN"
+```
+
+## Troubleshooting
+
+### 401/403 errors
+
+If you're getting authentication errors:
+
+1. Verify the secret exists in GitHub Secrets
+2. Check the secret name matches exactly (case-sensitive)
+3. Ensure the credentials are valid by testing with curl:
+   ```bash
+   curl -H "Authorization: Bearer YOUR_TOKEN" https://api.example.com/health
+   ```
+4. Review the workflow logs for error details
+
+### Secrets not being replaced
+
+If `$SECRET_NAME` appears in logs instead of being replaced:
+
+1. Verify you're using the `$SECRET_NAME` syntax (not `${SECRET_NAME}`)
+2. Ensure the secret is added to repository secrets, not environment secrets
+3. Check that the `SECRETS_CONTEXT` is passed in the workflow
+
+### Connection timeouts
+
+For private network services:
+
+1. Verify the self-hosted runner can access the endpoint
+2. Check firewall rules allow connections from the runner
+3. Increase the timeout value in `.upptimerc.yml`:
+   ```yaml
+   sites:
+     - name: Slow Service
+       url: https://slow.internal.com
+       maxResponseTime: 30000  # 30 seconds
+   ```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication Configuration" icon="key" href="/guides/authentication">
+    Learn more about advanced authentication configurations.
+  </Card>
+  <Card title="Workflow Customization" icon="gear" href="/configuration/workflows">
+    Customize GitHub Actions workflows for your monitoring needs.
+  </Card>
+</CardGroup>

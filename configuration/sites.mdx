@@ -1,0 +1,327 @@
+---
+title: 'Sites Configuration'
+description: 'Configure sites to monitor with different check types and options'
+icon: 'globe'
+---
+
+The `sites` array in your `.upptimerc.yml` file defines which endpoints to monitor. Upptime supports multiple check types including HTTP(S), TCP ping, and DNS queries.
+
+## Basic Site Configuration
+
+The simplest site configuration requires just a name and URL:
+
+```yaml
+sites:
+  - name: Google
+    url: https://www.google.com
+```
+
+## Site Parameters
+
+<ParamField path="name" type="string" required>
+  A descriptive name for your site. This appears on the status page and in issue titles.
+
+  ```yaml
+  - name: My Website
+  ```
+</ParamField>
+
+<ParamField path="url" type="string" required>
+  The URL or hostname to monitor. Format depends on the check type.
+
+  For HTTP(S) checks:
+  ```yaml
+  - name: Google
+    url: https://www.google.com
+  ```
+
+  For TCP ping:
+  ```yaml
+  - name: IPv6 test
+    url: forwardemail.net
+    check: "tcp-ping"
+    port: 80
+  ```
+</ParamField>
+
+<ParamField path="check" type="string" default="http">
+  The type of check to perform. Available options:
+  - `http` or `https` - HTTP(S) request (default)
+  - `tcp-ping` - TCP connection test
+  - `dns` - DNS lookup
+
+  ```yaml
+  - name: DNS Test
+    url: google.com
+    check: dns
+  ```
+</ParamField>
+
+<ParamField path="port" type="number">
+  The port to use for TCP ping checks.
+
+  ```yaml
+  - name: Mail Server
+    url: mail.example.com
+    check: "tcp-ping"
+    port: 25
+  ```
+</ParamField>
+
+<ParamField path="ipv6" type="boolean" default="false">
+  Use IPv6 instead of IPv4 for the check.
+
+  ```yaml
+  - name: IPv6 Test
+    url: forwardemail.net
+    port: 80
+    check: "tcp-ping"
+    ipv6: true
+  ```
+</ParamField>
+
+## HTTP/HTTPS Options
+
+<ParamField path="method" type="string" default="GET">
+  HTTP method to use. Options: `GET`, `POST`, `PUT`, `DELETE`, `HEAD`, etc.
+
+  ```yaml
+  - name: API Endpoint
+    url: https://api.example.com/health
+    method: POST
+  ```
+</ParamField>
+
+<ParamField path="headers" type="array">
+  Custom HTTP headers to send with the request.
+
+  ```yaml
+  - name: Authenticated API
+    url: https://api.example.com/status
+    headers:
+      - "Authorization: Bearer $API_TOKEN"
+      - "Content-Type: application/json"
+  ```
+
+  <Note>Use GitHub Secrets for sensitive values like API tokens. Reference them with `$SECRET_NAME`.</Note>
+</ParamField>
+
+<ParamField path="body" type="string">
+  Request body to send with POST/PUT requests.
+
+  ```yaml
+  - name: API Health Check
+    url: https://api.example.com/health
+    method: POST
+    body: '{"status": "check"}'
+  ```
+</ParamField>
+
+<ParamField path="expectedStatusCodes" type="array" default="[200]">
+  HTTP status codes that indicate a successful check. By default, only 200 is considered successful.
+
+  ```yaml
+  - name: Redirect Test
+    url: https://example.com/redirect
+    expectedStatusCodes:
+      - 200
+      - 301
+      - 302
+  ```
+</ParamField>
+
+<ParamField path="maxResponseTime" type="number" default="30000">
+  Maximum response time in milliseconds before considering the site as slow or down.
+
+  ```yaml
+  - name: Fast API
+    url: https://api.example.com
+    maxResponseTime: 5000
+  ```
+</ParamField>
+
+<ParamField path="maxRedirects" type="number" default="5">
+  Maximum number of redirects to follow.
+
+  ```yaml
+  - name: Example
+    url: https://example.com
+    maxRedirects: 3
+  ```
+</ParamField>
+
+## Authentication
+
+<ParamField path="__dangerous__insecure__" type="boolean" default="false">
+  Skip SSL certificate verification. Only use this for testing.
+
+  ```yaml
+  - name: Test Site
+    url: https://self-signed.example.com
+    __dangerous__insecure__: true
+  ```
+
+  <Warning>Only use this for development. Never skip SSL verification in production.</Warning>
+</ParamField>
+
+## Response Validation
+
+<ParamField path="slug" type="string">
+  Custom slug for the site's URL path. By default, generated from the name.
+
+  ```yaml
+  - name: My Website
+    url: https://example.com
+    slug: example
+  ```
+</ParamField>
+
+<ParamField path="icon" type="string">
+  Custom icon URL for the site. By default, uses the favicon from the site.
+
+  ```yaml
+  - name: My Site
+    url: https://example.com
+    icon: https://example.com/icon.png
+  ```
+</ParamField>
+
+## Example Configurations
+
+### Basic HTTP Check
+
+```yaml
+sites:
+  - name: Google
+    url: https://www.google.com
+```
+
+### API with Authentication
+
+```yaml
+sites:
+  - name: Private API
+    url: https://api.example.com/v1/health
+    method: GET
+    headers:
+      - "Authorization: Bearer $API_TOKEN"
+    expectedStatusCodes:
+      - 200
+      - 201
+```
+
+### TCP Port Check
+
+```yaml
+sites:
+  - name: Mail Server
+    url: mail.example.com
+    check: "tcp-ping"
+    port: 587
+```
+
+### IPv6 Check
+
+```yaml
+sites:
+  - name: IPv6 Test
+    url: forwardemail.net
+    port: 80
+    check: "tcp-ping"
+    ipv6: true
+```
+
+### POST Request with Body
+
+```yaml
+sites:
+  - name: Webhook
+    url: https://api.example.com/webhook
+    method: POST
+    headers:
+      - "Content-Type: application/json"
+    body: '{"event": "health_check"}'
+    expectedStatusCodes:
+      - 200
+      - 202
+```
+
+### Multiple Status Codes
+
+```yaml
+sites:
+  - name: CDN Endpoint
+    url: https://cdn.example.com/asset
+    expectedStatusCodes:
+      - 200
+      - 304  # Not Modified
+    maxResponseTime: 2000
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use descriptive names">
+    Choose clear, descriptive names that help you quickly identify which service is down when you receive an alert.
+
+    ```yaml
+    # Good
+    - name: Production API - User Service
+      url: https://api.example.com/users
+
+    # Not as clear
+    - name: API
+      url: https://api.example.com/users
+    ```
+  </Accordion>
+
+  <Accordion title="Set realistic timeouts">
+    Set `maxResponseTime` based on your service's typical response time. Too low and you'll get false alarms; too high and you won't catch performance issues.
+
+    ```yaml
+    - name: Database API
+      url: https://db-api.example.com/health
+      maxResponseTime: 5000  # 5 seconds for database queries
+    ```
+  </Accordion>
+
+  <Accordion title="Use secrets for sensitive data">
+    Never commit API tokens or passwords directly in `.upptimerc.yml`. Use GitHub Secrets instead.
+
+    ```yaml
+    # In .upptimerc.yml
+    - name: Private API
+      url: https://api.example.com
+      headers:
+        - "Authorization: Bearer $API_TOKEN"
+
+    # Add API_TOKEN as a GitHub Secret in your repository settings
+    ```
+  </Accordion>
+
+  <Accordion title="Monitor critical paths">
+    Monitor the most critical user-facing endpoints, not just your homepage.
+
+    ```yaml
+    sites:
+      - name: Homepage
+        url: https://example.com
+      - name: Login API
+        url: https://api.example.com/auth/login
+      - name: Payment Gateway
+        url: https://api.example.com/payments/status
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration Reference" icon="file-code" href="/configuration/upptimerc">
+    Complete .upptimerc.yml reference
+  </Card>
+
+  <Card title="Customize Status Page" icon="palette" href="/configuration/customization">
+    Customize the appearance of your status page
+  </Card>
+</CardGroup>

@@ -1,0 +1,102 @@
+---
+title: Introduction to Upptime
+description: Open-source uptime monitor and status page powered entirely by GitHub Actions, Issues, and Pages
+---
+
+# Welcome to Upptime
+
+Upptime is the open-source uptime monitor and status page, powered entirely by GitHub Actions, Issues, and Pages. Monitor your websites, APIs, and services with zero infrastructure costs.
+
+<Note>
+Upptime is completely free if you're already using GitHub. No external servers or subscriptions needed - just GitHub Actions, Issues, and Pages.
+</Note>
+
+## What is Upptime?
+
+Upptime transforms GitHub's built-in features into a full-featured uptime monitoring solution. It runs scheduled checks using GitHub Actions to ping your endpoints and verify they're online, records response time data in git commits for long-term trend analysis, and automatically opens GitHub Issues when downtime is detected.
+
+A beautiful status page built with Svelte is hosted via GitHub Pages, showing uptime percentages, response times, and incident history - giving you the complete uptime monitoring stack without any external dependencies.
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Automated monitoring" icon="clock">
+    GitHub Actions checks your endpoints every 5 minutes to detect downtime instantly
+  </Card>
+  
+  <Card title="Incident management" icon="exclamation-circle">
+    GitHub Issues automatically open when sites go down and close when they recover
+  </Card>
+  
+  <Card title="Response time tracking" icon="chart-line">
+    Historical response time data committed to git with daily trend graphs
+  </Card>
+  
+  <Card title="Public status page" icon="browser">
+    Beautiful, accessible PWA hosted on GitHub Pages showing real-time status
+  </Card>
+  
+  <Card title="Zero infrastructure" icon="server">
+    Runs entirely on GitHub with no external servers or databases required
+  </Card>
+  
+  <Card title="Notifications" icon="bell">
+    Slack notifications and team member assignments for incident response
+  </Card>
+</CardGroup>
+
+## How it works
+
+Upptime leverages three core GitHub features to provide complete uptime monitoring:
+
+### GitHub Actions for monitoring
+
+- Scheduled workflow runs every 5 minutes to check endpoint status
+- Response time recorded every 6 hours and committed to git
+- Daily graph generation for response time visualization
+- Uses the `upptime/uptime-monitor` action for all checks
+
+### GitHub Issues for incidents
+
+- Issues automatically opened when endpoints go down
+- Team members assigned to issues for incident response
+- Incident reports posted as issue comments
+- Issues locked to prevent spam from non-members
+- Automatic closure when services recover
+- Optional Slack notifications on status updates
+
+### GitHub Pages for status website
+
+- Simple, beautiful, and accessible PWA
+- Built with Svelte and Sapper
+- Fetches live data using the GitHub API
+- No backend required - completely static
+- Customizable with your own domain and branding
+
+## Why choose Upptime?
+
+**Cost-effective**: If you're already using GitHub, Upptime is completely free. GitHub Actions provides 2,000 minutes/month for free on public repositories and 3,000 minutes/month on private repositories with GitHub Free.
+
+**Transparent**: All your monitoring data lives in git commits, giving you a complete audit trail. You own your data - delete the repo and everything is gone.
+
+**Simple**: Single configuration file (`.upptimerc.yml`) controls everything. No complex setup or external integrations required.
+
+**Trusted**: Used by 3,000+ teams and organizations including Canonical (Ubuntu) and WakaTime. Over 16,000 stars on GitHub.
+
+<Warning>
+Upptime is not affiliated with or endorsed by GitHub. It simply uses publicly available GitHub features in an innovative way.
+</Warning>
+
+## Who uses Upptime?
+
+Upptime is trusted by developers and teams worldwide to monitor their critical services:
+
+- **Canonical** - The company behind Ubuntu Linux
+- **WakaTime** - Developer time tracking service
+- **3,000+ other organizations** monitoring their infrastructure
+
+Whether you're a solo developer monitoring personal projects or a team managing production services, Upptime scales to meet your needs.
+
+## Get started
+
+Ready to start monitoring your services? Check out the [Quickstart](/quickstart) guide to get Upptime running in under 5 minutes, or dive into the detailed [Installation](/installation) guide for a complete walkthrough.

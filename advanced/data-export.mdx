@@ -1,0 +1,250 @@
+---
+title: "Data Export"
+description: "Exporting and accessing historical uptime and response time data from Upptime"
+---
+
+## Overview
+
+Upptime stores all monitoring data directly in your GitHub repository, making it easy to export, analyze, and integrate with other tools. Historical data is stored in multiple formats across different directories.
+
+## Data Storage Architecture
+
+Upptime organizes data into three main directories:
+
+### 1. History Files (`/history`)
+
+YAML files containing the latest status for each monitored site.
+
+**Location**: `history/{site-name}.yml`
+
+**Format**:
+```yaml
+url: https://www.google.com
+status: up
+code: 200
+responseTime: 131
+lastUpdated: 2026-03-02T23:16:08.212Z
+startTime: 2020-08-10T07:54:39.000Z
+generator: Upptime <https://github.com/upptime/upptime>
+```
+
+### 2. API Data (`/api`)
+
+JSON files containing aggregated metrics in Shields.io badge format.
+
+**Location**: `api/{site-name}/`
+
+**Available metrics**:
+- `uptime.json` - All-time uptime percentage
+- `uptime-day.json` - Last 24 hours uptime
+- `uptime-week.json` - Last 7 days uptime
+- `uptime-month.json` - Last 30 days uptime
+- `uptime-year.json` - Last 365 days uptime
+- `response-time.json` - All-time average response time
+- `response-time-day.json` - Last 24 hours average
+- `response-time-week.json` - Last 7 days average
+- `response-time-month.json` - Last 30 days average
+- `response-time-year.json` - Last 365 days average
+
+**Format example** (`api/google/uptime.json`):
+```json
+{"schemaVersion":1,"label":"uptime","message":"99.99%","color":"brightgreen"}
+```
+
+### 3. Response Time Graphs (`/graphs`)
+
+PNG images showing response time trends over various time periods.
+
+**Location**: `graphs/{site-name}/`
+
+**Available graphs**:
+- `response-time.png` - All-time response time graph
+- `response-time-day.png` - Last 24 hours
+- `response-time-week.png` - Last 7 days
+- `response-time-month.png` - Last 30 days
+- `response-time-year.png` - Last 365 days
+
+## Accessing Data Programmatically
+
+### Via GitHub Raw URLs
+
+Access JSON data directly via GitHub's raw content URLs:
+
+```bash
+curl https://raw.githubusercontent.com/{owner}/{repo}/HEAD/api/{site-name}/uptime.json
+```
+
+**Example**:
+```bash
+curl https://raw.githubusercontent.com/upptime/upptime/HEAD/api/google/uptime.json
+```
+
+### Via Git Clone
+
+Clone the repository to analyze all historical data:
+
+```bash
+git clone https://github.com/{owner}/{repo}.git
+cd {repo}
+```
+
+### Using GitHub API
+
+Fetch data using the GitHub Contents API:
+
+```javascript
+const response = await fetch(
+  'https://api.github.com/repos/{owner}/{repo}/contents/api/google/uptime.json'
+);
+const data = await response.json();
+const content = JSON.parse(atob(data.content));
+console.log(content.message); // "99.99%"
+```
+
+## Exporting Historical Data
+
+### Export All Metrics to CSV
+
+Use Git history to export all data points:
+
+```bash
+# Export uptime history for a specific site
+git log --all --pretty=format:'%ai' --follow history/google.yml | \
+  while read date; do
+    git show "$(git rev-list -1 --before="$date" HEAD):history/google.yml"
+  done > google-history.csv
+```
+
+### Extract Response Times
+
+Parse YAML history files to extract response time data:
+
+```python
+import yaml
+import glob
+
+for file in glob.glob('history/*.yml'):
+    with open(file, 'r') as f:
+        data = yaml.safe_load(f)
+        print(f"{data['url']}: {data['responseTime']}ms")
+```
+
+### Monitor Data via GitHub Actions
+
+Create a custom workflow to export data on schedule:
+
+```yaml
+name: Export Data
+on:
+  schedule:
+    - cron: "0 0 * * 0"  # Weekly on Sunday
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Export metrics
+        run: |
+          mkdir -p exports
+          cp -r api exports/api-$(date +%Y-%m-%d)
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: metrics-export
+          path: exports/
+```
+
+## Data Integration Examples
+
+### Embed in Dashboard
+
+Use Shields.io badges with your data:
+
+```markdown
+![Uptime](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/{owner}/{repo}/HEAD/api/{site-name}/uptime.json)
+```
+
+### Webhook Notifications
+
+Configure `.upptimerc.yml` to send data to external services:
+
+```yaml
+status-website:
+  # ... other config
+
+# Send notifications with status data
+notifications:
+  - type: slack
+    webhook-url: $SLACK_WEBHOOK_URL
+```
+
+### Analytics Integration
+
+Push metrics to analytics platforms:
+
+```javascript
+// Fetch and send to analytics service
+async function syncMetrics() {
+  const sites = ['google', 'wikipedia', 'hacker-news'];
+  
+  for (const site of sites) {
+    const uptime = await fetch(
+      `https://raw.githubusercontent.com/{owner}/{repo}/HEAD/api/${site}/uptime.json`
+    ).then(r => r.json());
+    
+    // Send to analytics
+    analytics.track('uptime_metric', {
+      site: site,
+      uptime: uptime.message
+    });
+  }
+}
+```
+
+## Git History for Audit Trail
+
+Since all data is committed to Git, you have a complete audit trail:
+
+```bash
+# View all changes to a site's status
+git log --follow -p history/google.yml
+
+# See when a site went down
+git log --all --grep="status: down" --oneline
+
+# View uptime changes over time
+git log --all --oneline api/google/uptime.json
+```
+
+## Data Retention
+
+Upptime retains all data indefinitely in your Git repository. To manage repository size:
+
+- **Archive old data**: Move historical data to separate branches
+- **Git LFS**: Use Git Large File Storage for graphs
+- **Shallow clones**: Use `git clone --depth=1` for recent data only
+
+## Backup Strategies
+
+### Automated Backups
+
+```bash
+# Daily backup script
+#!/bin/bash
+DATE=$(date +%Y-%m-%d)
+git clone https://github.com/{owner}/{repo}.git backup-$DATE
+tar -czf upptime-backup-$DATE.tar.gz backup-$DATE
+```
+
+### Mirror Repository
+
+Create a mirror for redundancy:
+
+```bash
+git clone --mirror https://github.com/{owner}/{repo}.git
+cd {repo}.git
+git remote add backup https://github.com/{owner}/{repo}-backup.git
+git push --mirror backup
+```

@@ -1,0 +1,557 @@
+---
+title: "CI/CD Integration"
+description: "Integrate Upptime into your continuous integration and deployment pipelines"
+---
+
+## Overview
+
+Upptime can be integrated into your CI/CD workflows to monitor deployments, validate environment health, and trigger status updates automatically. This guide covers common integration patterns and best practices.
+
+## Integration Patterns
+
+Upptime integrates with CI/CD pipelines through:
+
+- **Workflow dispatch**: Trigger checks on demand
+- **Repository dispatch**: Trigger from external systems
+- **API integration**: Use GitHub API to control Upptime
+- **Webhook notifications**: React to deployment events
+- **Status checks**: Validate deployments before promoting
+
+## Triggering Checks After Deployment
+
+### Using Workflow Dispatch
+
+Trigger Upptime checks immediately after deployment:
+
+<Steps>
+  <Step title="Enable workflow_dispatch in Upptime">
+    The default Upptime workflows already support `workflow_dispatch`. Verify in `.github/workflows/uptime.yml`:
+
+    ```yaml .github/workflows/uptime.yml
+    on:
+      schedule:
+        - cron: "*/5 * * * *"
+      workflow_dispatch:  # Allows manual/API triggering
+    ```
+  </Step>
+
+  <Step title="Trigger from deployment workflow">
+    Add a step to your deployment workflow to trigger Upptime:
+
+    ```yaml .github/workflows/deploy.yml
+    name: Deploy Application
+    on:
+      push:
+        branches: [main]
+
+    jobs:
+      deploy:
+        runs-on: ubuntu-latest
+        steps:
+          - name: Deploy to production
+            run: |
+              # Your deployment commands
+              echo "Deploying application..."
+
+          - name: Trigger Upptime check
+            uses: benc-uk/workflow-dispatch@v1
+            with:
+              workflow: Uptime CI
+              repo: your-username/upptime
+              token: ${{ secrets.PAT_TOKEN }}
+    ```
+  </Step>
+
+  <Step title="Create Personal Access Token">
+    Create a PAT with `workflow` scope:
+
+    1. Go to GitHub **Settings** > **Developer settings** > **Personal access tokens**
+    2. Click **Generate new token (classic)**
+    3. Select the `workflow` scope
+    4. Add the token as `PAT_TOKEN` secret in your deployment repository
+  </Step>
+</Steps>
+
+### Using Repository Dispatch
+
+For cross-repository triggering:
+
+<Steps>
+  <Step title="Add repository_dispatch to Upptime workflow">
+    Update `.github/workflows/uptime.yml`:
+
+    ```yaml .github/workflows/uptime.yml
+    on:
+      schedule:
+        - cron: "*/5 * * * *"
+      repository_dispatch:
+        types: [deployment_complete]
+      workflow_dispatch:
+    ```
+  </Step>
+
+  <Step title="Trigger from deployment">
+    Send a repository dispatch event after deployment:
+
+    ```yaml .github/workflows/deploy.yml
+    - name: Notify Upptime
+      run: |
+        curl -X POST \
+          -H "Accept: application/vnd.github.v3+json" \
+          -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+          https://api.github.com/repos/your-username/upptime/dispatches \
+          -d '{"event_type":"deployment_complete","client_payload":{"environment":"production"}}'
+    ```
+  </Step>
+</Steps>
+
+## Environment-Specific Monitoring
+
+### Multi-Environment Setup
+
+Monitor different environments with separate configurations:
+
+```yaml .upptimerc.yml
+sites:
+  # Production endpoints
+  - name: Production API
+    url: https://api.production.com/health
+    headers:
+      - "Authorization: Bearer $PROD_API_TOKEN"
+  
+  # Staging endpoints
+  - name: Staging API
+    url: https://api.staging.com/health
+    headers:
+      - "Authorization: Bearer $STAGING_API_TOKEN"
+  
+  # Development endpoints
+  - name: Dev API
+    url: https://api.dev.com/health
+    headers:
+      - "Authorization: Bearer $DEV_API_TOKEN"
+```
+
+### Dynamic Environment Checks
+
+Create separate workflows for each environment:
+
+<CodeGroup>
+
+```yaml .github/workflows/uptime-production.yml
+name: Production Uptime
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  repository_dispatch:
+    types: [production_deployment]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check production health
+        run: |
+          curl -f https://api.production.com/health || exit 1
+```
+
+```yaml .github/workflows/uptime-staging.yml
+name: Staging Uptime
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  repository_dispatch:
+    types: [staging_deployment]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check staging health
+        run: |
+          curl -f https://api.staging.com/health || exit 1
+```
+
+</CodeGroup>
+
+## Post-Deployment Health Checks
+
+### Validate Deployment Success
+
+Add health checks to your deployment workflow:
+
+```yaml .github/workflows/deploy.yml
+name: Deploy Application
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy application
+        run: |
+          # Deployment commands
+          ./deploy.sh production
+
+      - name: Wait for deployment
+        run: sleep 30
+
+      - name: Health check
+        run: |
+          MAX_ATTEMPTS=10
+          ATTEMPT=0
+          
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            if curl -f https://api.production.com/health; then
+              echo "Health check passed!"
+              exit 0
+            fi
+            
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "Attempt $ATTEMPT failed, retrying..."
+            sleep 10
+          done
+          
+          echo "Health check failed after $MAX_ATTEMPTS attempts"
+          exit 1
+
+      - name: Trigger Upptime
+        if: success()
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: Uptime CI
+          repo: your-username/upptime
+          token: ${{ secrets.PAT_TOKEN }}
+```
+
+## Rollback on Health Check Failure
+
+Automatically rollback deployments that fail health checks:
+
+```yaml .github/workflows/deploy-with-rollback.yml
+name: Deploy with Rollback
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Save current version
+        id: current
+        run: |
+          CURRENT_VERSION=$(curl -s https://api.production.com/version)
+          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Deploy new version
+        run: ./deploy.sh ${{ github.sha }}
+
+      - name: Health check
+        id: health
+        run: |
+          sleep 30
+          curl -f https://api.production.com/health
+        continue-on-error: true
+
+      - name: Rollback on failure
+        if: steps.health.outcome == 'failure'
+        run: |
+          echo "Health check failed, rolling back..."
+          ./deploy.sh ${{ steps.current.outputs.version }}
+          exit 1
+
+      - name: Verify rollback
+        if: steps.health.outcome == 'failure'
+        run: |
+          sleep 30
+          curl -f https://api.production.com/health
+```
+
+## Notifications Integration
+
+### Slack Notifications
+
+Combine Upptime with Slack for deployment notifications:
+
+```yaml .upptimerc.yml
+status-website:
+  name: Production Status
+
+notifications:
+  - type: slack
+    webhook: $SLACK_WEBHOOK_URL
+```
+
+Then configure your deployment workflow:
+
+```yaml .github/workflows/deploy.yml
+- name: Notify deployment start
+  uses: slackapi/slack-github-action@v1
+  with:
+    webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+    payload: |
+      {
+        "text": "Deployment started for ${{ github.sha }}"
+      }
+
+# ... deployment steps ...
+
+- name: Notify deployment complete
+  uses: slackapi/slack-github-action@v1
+  with:
+    webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+    payload: |
+      {
+        "text": "Deployment complete! Upptime monitoring activated."
+      }
+```
+
+### Custom Notifications
+
+Send custom notifications via webhooks:
+
+```yaml .github/workflows/deploy.yml
+- name: Send deployment notification
+  run: |
+    curl -X POST ${{ secrets.WEBHOOK_URL }} \
+      -H "Content-Type: application/json" \
+      -d '{
+        "event": "deployment",
+        "status": "success",
+        "version": "${{ github.sha }}",
+        "environment": "production",
+        "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
+      }'
+```
+
+## Blue-Green Deployment Monitoring
+
+Monitor both environments during blue-green deployments:
+
+<Steps>
+  <Step title="Configure both environments">
+    ```yaml .upptimerc.yml
+    sites:
+      - name: Production (Blue)
+        url: https://blue.production.com/health
+        headers:
+          - "Authorization: Bearer $PROD_API_TOKEN"
+      
+      - name: Production (Green)
+        url: https://green.production.com/health
+        headers:
+          - "Authorization: Bearer $PROD_API_TOKEN"
+    ```
+  </Step>
+
+  <Step title="Deploy to inactive environment">
+    ```yaml .github/workflows/blue-green-deploy.yml
+    - name: Determine target environment
+      id: target
+      run: |
+        ACTIVE=$(curl -s https://production.com/active)
+        if [ "$ACTIVE" = "blue" ]; then
+          echo "environment=green" >> $GITHUB_OUTPUT
+        else
+          echo "environment=blue" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Deploy to ${{ steps.target.outputs.environment }}
+      run: ./deploy.sh ${{ steps.target.outputs.environment }}
+    ```
+  </Step>
+
+  <Step title="Validate new environment">
+    ```yaml
+    - name: Health check new environment
+      run: |
+        for i in {1..10}; do
+          if curl -f https://${{ steps.target.outputs.environment }}.production.com/health; then
+            echo "Health check passed"
+            exit 0
+          fi
+          sleep 10
+        done
+        exit 1
+    ```
+  </Step>
+
+  <Step title="Switch traffic">
+    ```yaml
+    - name: Switch to new environment
+      run: ./switch-traffic.sh ${{ steps.target.outputs.environment }}
+
+    - name: Trigger Upptime check
+      uses: benc-uk/workflow-dispatch@v1
+      with:
+        workflow: Uptime CI
+        token: ${{ secrets.PAT_TOKEN }}
+    ```
+  </Step>
+</Steps>
+
+## Canary Deployment Monitoring
+
+Monitor canary deployments with gradual traffic shifting:
+
+```yaml .github/workflows/canary-deploy.yml
+name: Canary Deployment
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy canary (10% traffic)
+        run: ./deploy-canary.sh 10
+
+      - name: Monitor canary for 10 minutes
+        run: |
+          END_TIME=$(($(date +%s) + 600))
+          while [ $(date +%s) -lt $END_TIME ]; do
+            ERROR_RATE=$(curl -s https://api.production.com/metrics | jq '.error_rate')
+            if (( $(echo "$ERROR_RATE > 0.01" | bc -l) )); then
+              echo "Error rate too high: $ERROR_RATE"
+              ./rollback-canary.sh
+              exit 1
+            fi
+            sleep 30
+          done
+
+      - name: Increase to 50% traffic
+        run: ./deploy-canary.sh 50
+
+      - name: Monitor for 10 more minutes
+        run: |
+          # Similar monitoring logic
+
+      - name: Promote to 100%
+        run: ./deploy-canary.sh 100
+
+      - name: Trigger full Upptime check
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: Uptime CI
+          token: ${{ secrets.PAT_TOKEN }}
+```
+
+## Terraform/Infrastructure as Code Integration
+
+Update Upptime configuration after infrastructure changes:
+
+```yaml .github/workflows/terraform-deploy.yml
+name: Terraform Deploy
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Terraform apply
+        run: terraform apply -auto-approve
+
+      - name: Get new endpoint URL
+        id: endpoint
+        run: |
+          URL=$(terraform output -raw api_endpoint)
+          echo "url=$URL" >> $GITHUB_OUTPUT
+
+      - name: Update Upptime config
+        run: |
+          yq eval '.sites[0].url = "${{ steps.endpoint.outputs.url }}"' \
+            -i .upptimerc.yml
+
+      - name: Commit and push
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add .upptimerc.yml
+          git commit -m "Update endpoint after infrastructure deployment"
+          git push
+```
+
+## Docker/Kubernetes Integration
+
+### Kubernetes Health Checks
+
+Monitor Kubernetes service endpoints:
+
+```yaml .upptimerc.yml
+sites:
+  - name: K8s API Gateway
+    url: https://api.k8s.production.com/health
+    expectedStatusCodes:
+      - 200
+  
+  - name: K8s Service (Internal)
+    url: http://service.namespace.svc.cluster.local:8080/health
+    # Requires self-hosted runner inside cluster
+```
+
+### Post-Deploy Validation
+
+```yaml .github/workflows/k8s-deploy.yml
+- name: Deploy to Kubernetes
+  run: kubectl apply -f k8s/
+
+- name: Wait for rollout
+  run: kubectl rollout status deployment/api-server
+
+- name: Validate service health
+  run: |
+    kubectl run curl-test --image=curlimages/curl:latest --rm -i --restart=Never -- \
+      curl -f http://api-server.default.svc.cluster.local:8080/health
+
+- name: Trigger Upptime
+  uses: benc-uk/workflow-dispatch@v1
+  with:
+    workflow: Uptime CI
+    token: ${{ secrets.PAT_TOKEN }}
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Wait After Deployment" icon="clock">
+    Always wait 30-60 seconds after deployment before running health checks to allow services to initialize.
+  </Card>
+  <Card title="Retry Logic" icon="rotate">
+    Implement retry logic in health checks to handle temporary unavailability during deployment.
+  </Card>
+  <Card title="Multiple Checks" icon="list-check">
+    Run multiple health checks at different intervals to ensure stability.
+  </Card>
+  <Card title="Monitor Metrics" icon="chart-line">
+    Track error rates, latency, and other metrics during and after deployment.
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+### Workflow Not Triggering
+
+1. **Verify PAT scope**: Ensure your Personal Access Token has `workflow` scope
+2. **Check repository name**: Confirm the repository path is correct
+3. **Review workflow name**: Workflow name must match exactly (case-sensitive)
+4. **Check permissions**: Ensure the PAT has access to the target repository
+
+### Health Checks Failing
+
+1. **Increase wait time**: Services may need more time to initialize
+2. **Check logs**: Review application logs for startup errors
+3. **Verify endpoints**: Ensure health check endpoints are correct
+4. **Test manually**: Run health checks manually to isolate issues
+
+### Deployment Rollback Not Working
+
+1. **Verify rollback logic**: Test rollback procedure independently
+2. **Check version tracking**: Ensure version information is correctly captured
+3. **Review deployment history**: Confirm previous versions are available
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Workflow Configuration" icon="gears" href="/configuration/workflows">
+    Learn how to customize GitHub Actions workflows.
+  </Card>
+  <Card title="Notifications Setup" icon="bell" href="/features/notifications">
+    Configure notifications for deployment events.
+  </Card>
+</CardGroup>
