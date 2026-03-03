@@ -1,0 +1,95 @@
+{
+  "projectType": "saas",
+  "projectName": "Upptime",
+  "projectDescription": "Open-source uptime monitor and status page powered entirely by GitHub Actions and Pages",
+  "theme": "aspen",
+  "primaryColor": "#10b981",
+  "lightColor": null,
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/uptime-monitoring",
+              "features/status-page",
+              "features/incidents",
+              "features/response-time",
+              "features/notifications"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/upptimerc",
+              "configuration/sites",
+              "configuration/workflows",
+              "configuration/customization"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/custom-domains",
+              "guides/private-sites",
+              "guides/authentication",
+              "guides/ci-cd-integration"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "advanced/data-export",
+              "advanced/self-hosting",
+              "advanced/troubleshooting",
+              "advanced/migration"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Reference",
+            "pages": [
+              "api/overview",
+              "api/configuration-reference",
+              "api/github-actions"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Automated uptime monitoring every 5 minutes via GitHub Actions",
+    "Beautiful status page hosted on GitHub Pages with Svelte",
+    "Automatic incident reports via GitHub Issues",
+    "Response time tracking and historical graphs",
+    "Slack, Discord, and email notifications",
+    "100% free using GitHub infrastructure",
+    "Git-based data storage with full audit trail",
+    "IPv4 and IPv6 support with multiple check types"
+  ],
+  "publicApiSurface": [
+    ".upptimerc.yml configuration file",
+    "upptime/uptime-monitor@v1.41.0 GitHub Action",
+    "Workflow commands: update, response-time, graphs, site, readme",
+    "Status page endpoints via GitHub Pages",
+    "Response time data in /api directory",
+    "Historical uptime data in /history directory",
+    "Summary JSON API at history/summary.json"
+  ]
+}
